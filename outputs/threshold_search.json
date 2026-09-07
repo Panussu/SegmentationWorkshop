@@ -1,69 +1,137 @@
 [
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.1,
     "mean_iou": 0.3420192632953882
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.15,
     "mean_iou": 0.3540107485925795
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.2,
     "mean_iou": 0.36621110068290447
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.25,
     "mean_iou": 0.37917027178926305
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.3,
     "mean_iou": 0.399073730991477
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.35,
     "mean_iou": 0.4165665149369957
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.4,
     "mean_iou": 0.4271834310895103
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.45,
     "mean_iou": 0.42652782569593883
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.5,
     "mean_iou": 0.4206838896690682
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.55,
     "mean_iou": 0.4030335897088818
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.6,
     "mean_iou": 0.3686287497591251
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.65,
     "mean_iou": 0.329356890023354
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.7,
     "mean_iou": 0.2453544027385098
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.75,
     "mean_iou": 0.11958826119825387
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.8,
     "mean_iou": 0.012151278588108305
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.85,
     "mean_iou": 0.0
   },
   {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
+      "mean_iou": "ค่าเฉลี่ย IoU รายภาพบน validation ก่อน Morphology ใช้เลือก threshold ที่ดีที่สุด"
+    },
     "threshold": 0.9,
     "mean_iou": 0.0
   }

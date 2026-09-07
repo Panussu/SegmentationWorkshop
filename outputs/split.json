@@ -1,4 +1,8 @@
 {
+  "_comment": {
+    "validation": "รายชื่อภาพสำหรับเลือก threshold ไม่ใช่ชุดทดสอบผลสุดท้าย",
+    "test": "รายชื่อภาพสำหรับประเมินผลหลังเลือก threshold แล้ว"
+  },
   "validation": [
     "Bombay_106",
     "Bombay_132",

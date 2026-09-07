@@ -9,6 +9,8 @@ from pathlib import Path
 import csv
 # นำเข้า json สำหรับอ่าน Split และเขียนผลสรุป
 import json
+# ใช้ตัวเขียน JSON ที่คงคำอธิบายภาษาไทยไว้เมื่อรันใหม่
+from json_comments import write_commented_json
 
 # นำเข้า OpenCV สำหรับย่อภาพและ Mask
 import cv2
@@ -144,7 +146,7 @@ def main():
         # หยุดโปรแกรมพร้อมแจ้งให้ดาวน์โหลดข้อมูลก่อนเมื่อไม่พบไฟล์ Split
         raise SystemExit("Run python download_data.py first.")
     # อ่านข้อความ JSON ของ Split แล้วแปลงเป็น Dictionary
-    split = json.loads((DATA / "split.json").read_text())
+    split = json.loads((DATA / "split.json").read_text(encoding="utf-8"))
     # ตรวจสอบว่ามีภาพ Test อย่างน้อย 50 ภาพและไม่มีภาพซ้ำกับ Validation
     if len(split["test"]) < 50 or set(split["validation"]) & set(split["test"]):
         # แจ้งข้อผิดพลาดเมื่อขนาดหรือการแยกชุดข้อมูลไม่ตรงตามข้อกำหนด
@@ -230,7 +232,7 @@ def main():
     # วนชื่อไฟล์และข้อมูลสำหรับผลลัพธ์ JSON ทั้งสามไฟล์
     for filename, content in [("summary.json", summary), ("threshold_search.json", tuning), ("split.json", split)]:
         # แปลงข้อมูลเป็น JSON แบบเยื้องแล้วบันทึกด้วย UTF-8
-        (OUT / filename).write_text(json.dumps(content, indent=2), encoding="utf-8")
+        write_commented_json(OUT / filename, content)
     # เปิดไฟล์ CSV ผลรายภาพในโหมดเขียนโดยไม่เพิ่มบรรทัดว่างซ้ำ
     with (OUT / "per_image.csv").open("w", newline="", encoding="utf-8") as file:
         # สร้างตัวเขียน CSV โดยใช้ Key ของผลลัพธ์แถวแรกเป็นชื่อคอลัมน์

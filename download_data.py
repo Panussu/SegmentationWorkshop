@@ -13,6 +13,8 @@ import tarfile
 import urllib.request
 # นำเข้า json สำหรับบันทึกรายชื่อภาพที่แบ่งเป็นแต่ละชุด
 import json
+# ใช้ตัวเขียน JSON ที่แนบคำอธิบายภาษาไทยในฟิลด์ _comment
+from json_comments import write_commented_json
 
 # =============================================================================
 # ส่วนที่ 2: การกำหนดพาธและแหล่งดาวน์โหลดชุดข้อมูล
@@ -116,7 +118,7 @@ def main():
         # แจ้งข้อผิดพลาดพร้อมรายชื่อรูปภาพที่ขาดหาย
         raise RuntimeError(f"Missing images: {sorted(wanted)}")
     # บันทึกรายชื่อ Validation และ Test เป็น JSON แบบเยื้องให้อ่านง่าย
-    (DATA / "split.json").write_text(json.dumps(selected, indent=2), encoding="utf-8")
+    write_commented_json(DATA / "split.json", selected)
     # แสดงข้อความยืนยันว่าจัดเตรียมภาพและ Trimap ครบแล้ว
     print("Ready: 20 validation images + 50 test images, each with a trimap.")
 

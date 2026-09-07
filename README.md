@@ -35,6 +35,7 @@ python -m venv .venv
 2. [download_data.py](download_data.py): ดาวน์โหลดและจัดชุดข้อมูล
 3. [run.py](run.py): เรียกทุกส่วนให้ทำงานต่อกัน และสร้างกราฟ
 4. [EXPLANATION_TH.md](EXPLANATION_TH.md): อธิบายแต่ละฟังก์ชันและวิธีอ่านผล
+5. [PROCESS_DETAILED_TH.md](PROCESS_DETAILED_TH.md): อธิบายกระบวนการแบบละเอียด ผังงาน สูตรประเมินผล และไฟล์ JSON
 
 ## ผลลัพธ์
 

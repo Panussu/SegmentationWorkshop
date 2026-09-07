@@ -1,0 +1,70 @@
+[
+  {
+    "threshold": 0.1,
+    "mean_iou": 0.3420192632953882
+  },
+  {
+    "threshold": 0.15,
+    "mean_iou": 0.3540107485925795
+  },
+  {
+    "threshold": 0.2,
+    "mean_iou": 0.36621110068290447
+  },
+  {
+    "threshold": 0.25,
+    "mean_iou": 0.37917027178926305
+  },
+  {
+    "threshold": 0.3,
+    "mean_iou": 0.399073730991477
+  },
+  {
+    "threshold": 0.35,
+    "mean_iou": 0.4165665149369957
+  },
+  {
+    "threshold": 0.4,
+    "mean_iou": 0.4271834310895103
+  },
+  {
+    "threshold": 0.45,
+    "mean_iou": 0.42652782569593883
+  },
+  {
+    "threshold": 0.5,
+    "mean_iou": 0.4206838896690682
+  },
+  {
+    "threshold": 0.55,
+    "mean_iou": 0.4030335897088818
+  },
+  {
+    "threshold": 0.6,
+    "mean_iou": 0.3686287497591251
+  },
+  {
+    "threshold": 0.65,
+    "mean_iou": 0.329356890023354
+  },
+  {
+    "threshold": 0.7,
+    "mean_iou": 0.2453544027385098
+  },
+  {
+    "threshold": 0.75,
+    "mean_iou": 0.11958826119825387
+  },
+  {
+    "threshold": 0.8,
+    "mean_iou": 0.012151278588108305
+  },
+  {
+    "threshold": 0.85,
+    "mean_iou": 0.0
+  },
+  {
+    "threshold": 0.9,
+    "mean_iou": 0.0
+  }
+]

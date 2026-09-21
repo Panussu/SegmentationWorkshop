@@ -5,6 +5,8 @@
 """รันการทดลองทั้งหมด: ปรับ threshold -> ทดสอบ -> บันทึกผลและกราฟ."""
 # นำเข้า Path สำหรับสร้างและจัดการพาธไฟล์
 from pathlib import Path
+# นำเข้า argparse สำหรับจัดการพารามิเตอร์ผ่าน Command line
+import argparse
 # นำเข้า csv สำหรับเขียนผลประเมินแยกตามรูปภาพ
 import csv
 # นำเข้า json สำหรับอ่าน Split และเขียนผลสรุป
@@ -42,18 +44,62 @@ OUT = ROOT / "outputs"
 
 
 # =============================================================================
+# ส่วนที่ 2.1: การจัดการค่าคอนฟิกและพารามิเตอร์การทดลอง (CLI & JSON Config)
+# =============================================================================
+# ประกาศฟังก์ชันสำหรับประมวลผลพารามิเตอร์จาก Command line หรือไฟล์ config.json
+def parse_args():
+    """ประมวลผลพารามิเตอร์จาก Command-line Arguments หรือไฟล์ config.json."""
+    # ตรวจสอบเบื้องต้นว่ามีการระบุ --config หรือไม่
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument("--config", type=Path, default=None)
+    pre_args, _ = pre_parser.parse_known_args()
+
+    config_defaults = {}
+    if pre_args.config:
+        if not pre_args.config.exists():
+            raise SystemExit(f"Config file not found: {pre_args.config}")
+        cfg = json.loads(pre_args.config.read_text(encoding="utf-8"))
+        config_defaults = {k.replace("-", "_"): v for k, v in cfg.items() if k != "_comment"}
+        if "data_dir" in config_defaults:
+            config_defaults["data_dir"] = Path(config_defaults["data_dir"])
+        if "output_dir" in config_defaults:
+            config_defaults["output_dir"] = Path(config_defaults["output_dir"])
+
+    parser = argparse.ArgumentParser(
+        description="รันการทดลอง Image Segmentation: ปรับ threshold -> ทดสอบ -> บันทึกผลและกราฟ",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("--config", type=Path, default=None, help="พาธของไฟล์ config.json สำหรับโหลดการตั้งค่าทั้งหมด")
+    parser.add_argument("--data-dir", type=Path, default=DATA, help="พาธโฟลเดอร์ที่เก็บชุดข้อมูล")
+    parser.add_argument("--output-dir", type=Path, default=OUT, help="พาธโฟลเดอร์ที่ใช้บันทึกผลลัพธ์")
+    parser.add_argument("--max-image-side", type=int, default=256, help="ความยาวด้านที่ยาวที่สุดหลังย่อภาพ (พิกเซล)")
+    parser.add_argument("--threshold-min", type=float, default=0.10, help="ค่า Threshold ต่ำสุดในการค้นหา")
+    parser.add_argument("--threshold-max", type=float, default=0.90, help="ค่า Threshold สูงสุดในการค้นหา")
+    parser.add_argument("--threshold-step", type=float, default=0.05, help="สเต็ปในการค้นหา Threshold")
+    parser.add_argument("--fixed-threshold", type=float, default=None, help="ระบุ Threshold คงที่โดยตรง ข้ามขั้นตอนจูนบน Validation")
+    parser.add_argument("--kernel-size", type=int, default=3, help="ขนาด Kernel สำหรับ Morphology ใน clean_mask (เลขคี่)")
+    parser.add_argument("--distance-scale", type=float, default=50.0, help="ตัวหารปรับสเกลคะแนนระยะสีใน foreground_score")
+
+    if config_defaults:
+        parser.set_defaults(**config_defaults)
+
+    return parser.parse_args()
+
+
+# =============================================================================
 # ส่วนที่ 3: การโหลดและเตรียมภาพกับ Ground truth
 # =============================================================================
 # ประกาศฟังก์ชันสำหรับโหลดรูปภาพและ Ground truth หนึ่งตัวอย่าง
-def load_sample(name):
+def load_sample(name, data_dir=DATA, max_image_side=256):
     # อธิบายว่าฟังก์ชันย่อภาพและรักษาค่า Label ของ Trimap
-    """ย่อภาพให้ด้านยาวไม่เกิน 256 และอ่าน trimap โดยรักษาค่า label."""
+    """ย่อภาพให้ด้านยาวไม่เกิน max_image_side และอ่าน trimap โดยรักษาค่า label."""
+    data_dir = Path(data_dir)
     # เปิดไฟล์ภาพสีตามชื่อที่รับเข้ามาและปิดไฟล์อัตโนมัติเมื่ออ่านเสร็จ
-    with Image.open(DATA / "images" / (name + ".jpg")) as image:
+    with Image.open(data_dir / "images" / (name + ".jpg")) as image:
         # แปลงภาพเป็น RGB แล้วเปลี่ยนเป็นอาร์เรย์ NumPy
         rgb = np.array(image.convert("RGB"))
     # เปิดไฟล์ Trimap ตามชื่อภาพและปิดไฟล์อัตโนมัติเมื่ออ่านเสร็จ
-    with Image.open(DATA / "masks" / (name + ".png")) as image:
+    with Image.open(data_dir / "masks" / (name + ".png")) as image:
         # แปลง Trimap เป็นอาร์เรย์ NumPy โดยคงค่า Label เดิม
         trimap = np.array(image)
     # ตรวจสอบว่าขนาด Trimap ตรงกับภาพและมีเฉพาะ Label 1, 2 และ 3
@@ -62,8 +108,8 @@ def load_sample(name):
         raise ValueError(f"Invalid trimap: {name}")
     # อ่านความสูงและความกว้างของภาพจากสองมิติแรก
     height, width = rgb.shape[:2]
-    # คำนวณอัตราย่อโดยให้ด้านยาวไม่เกิน 256 พิกเซลและไม่ขยายภาพเล็ก
-    scale = min(1.0, 256 / max(height, width))
+    # คำนวณอัตราย่อโดยให้ด้านยาวไม่เกิน max_image_side พิกเซลและไม่ขยายภาพเล็ก
+    scale = min(1.0, max_image_side / max(height, width))
     # คำนวณขนาดใหม่โดยรับประกันว่าแต่ละด้านมีอย่างน้อย 1 พิกเซล
     size = (max(1, round(width * scale)), max(1, round(height * scale)))
     # ย่อภาพสีด้วย Area interpolation ซึ่งเหมาะกับการลดขนาดภาพ
@@ -80,7 +126,7 @@ def load_sample(name):
 # ส่วนที่ 4: การค้นหา Threshold ที่เหมาะสมจากชุด Validation
 # =============================================================================
 # ประกาศฟังก์ชันสำหรับเลือก Threshold จากชุด Validation
-def choose_threshold(names):
+def choose_threshold(names, data_dir=DATA, max_image_side=256, threshold_min=0.10, threshold_max=0.90, threshold_step=0.05, distance_scale=50.0):
     # อธิบายว่าฟังก์ชันเลือก Threshold ด้วยค่าเฉลี่ย IoU ก่อนทำ Morphology
     """เลือก threshold จาก validation เท่านั้น โดยใช้ mean IoU ก่อน Morphology."""
     # สร้าง List ว่างสำหรับเก็บคะแนน Ground truth และ Valid mask ของทุกภาพ
@@ -88,13 +134,14 @@ def choose_threshold(names):
     # วนอ่านภาพ Validation แต่ละชื่อ
     for name in names:
         # โหลดภาพ Ground truth และบริเวณที่ใช้ประเมินของตัวอย่างปัจจุบัน
-        rgb, truth, valid = load_sample(name)
+        rgb, truth, valid = load_sample(name, data_dir=data_dir, max_image_side=max_image_side)
         # คำนวณคะแนนวัตถุแล้วเก็บพร้อม Ground truth และ Valid mask
-        samples.append((foreground_score(rgb), truth, valid))
+        samples.append((foreground_score(rgb, distance_scale=distance_scale), truth, valid))
     # สร้าง List ว่างสำหรับเก็บผลของ Threshold แต่ละค่า
     candidates = []
-    # วน Threshold ตั้งแต่ 0.10 ถึง 0.90 โดยเพิ่มครั้งละ 0.05
-    for threshold in np.arange(0.10, 0.91, 0.05):
+    # วน Threshold ตามช่วงและสเต็ปที่กำหนด
+    steps = np.arange(threshold_min, threshold_max + threshold_step / 2.0, threshold_step)
+    for threshold in steps:
         # คำนวณ IoU ของทุกภาพด้วย Threshold ปัจจุบัน โดยใช้เฉพาะพิกเซลที่ Valid
         scores = [metrics(confusion_counts(truth[valid], (score >= threshold)[valid]))["iou"] for score, truth, valid in samples]
         # เก็บค่า Threshold ที่ปัดเป็นสองตำแหน่งและค่าเฉลี่ย IoU ของทุกภาพ
@@ -107,9 +154,10 @@ def choose_threshold(names):
 # ส่วนที่ 5: การสร้างภาพตัวอย่างเปรียบเทียบก่อนและหลัง Morphology
 # =============================================================================
 # ประกาศฟังก์ชันสำหรับบันทึกภาพเปรียบเทียบผลของหนึ่งตัวอย่าง
-def save_example(name, rgb, truth, valid, raw, cleaned):
+def save_example(name, rgb, truth, valid, raw, cleaned, output_dir=OUT):
     # อธิบายองค์ประกอบทั้งห้าที่จะแสดงในภาพเปรียบเทียบ
     """แสดงภาพจริง เฉลย และ mask ก่อน/หลัง โดยระบายขอบที่ไม่ประเมินเป็นสีเทา."""
+    output_dir = Path(output_dir)
     # สร้าง Figure ที่มีกราฟย่อยหนึ่งแถวจำนวนห้าช่อง
     fig, axes = plt.subplots(1, 5, figsize=(15, 3))
     # สร้างภาพ Ground truth ที่กำหนดบริเวณไม่ใช้ประเมินเป็นสีเทาค่า 0.5
@@ -131,7 +179,7 @@ def save_example(name, rgb, truth, valid, raw, cleaned):
     # ปรับระยะห่างขององค์ประกอบใน Figure อัตโนมัติ
     fig.tight_layout()
     # บันทึก Figure ลงโฟลเดอร์ examples ด้วยความละเอียด 120 DPI
-    fig.savefig(OUT / "examples" / (name + ".png"), dpi=120)
+    fig.savefig(output_dir / "examples" / (name + ".png"), dpi=120)
     # ปิด Figure เพื่อคืนหน่วยความจำหลังบันทึกไฟล์
     plt.close(fig)
 
@@ -140,23 +188,45 @@ def save_example(name, rgb, truth, valid, raw, cleaned):
 # ส่วนที่ 6: กระบวนการทดลองหลักและการตรวจสอบชุดข้อมูล
 # =============================================================================
 # ประกาศฟังก์ชันหลักที่ควบคุมการทดลองทั้งหมด
-def main():
+def main(args=None):
+    # หากไม่ได้ส่ง args เข้ามา ให้ประมวลผลจาก Command line
+    if args is None:
+        args = parse_args()
+
+    data_dir = Path(args.data_dir)
+    out_dir = Path(args.output_dir)
+
     # ตรวจสอบว่ามีไฟล์แบ่งชุดข้อมูลที่สร้างโดย download_data.py แล้วหรือไม่
-    if not (DATA / "split.json").exists():
+    if not (data_dir / "split.json").exists():
         # หยุดโปรแกรมพร้อมแจ้งให้ดาวน์โหลดข้อมูลก่อนเมื่อไม่พบไฟล์ Split
-        raise SystemExit("Run python download_data.py first.")
+        raise SystemExit(f"Run python download_data.py first. Missing: {data_dir / 'split.json'}")
     # อ่านข้อความ JSON ของ Split แล้วแปลงเป็น Dictionary
-    split = json.loads((DATA / "split.json").read_text(encoding="utf-8"))
+    split = json.loads((data_dir / "split.json").read_text(encoding="utf-8"))
     # ตรวจสอบว่ามีภาพ Test อย่างน้อย 50 ภาพและไม่มีภาพซ้ำกับ Validation
     if len(split["test"]) < 50 or set(split["validation"]) & set(split["test"]):
         # แจ้งข้อผิดพลาดเมื่อขนาดหรือการแยกชุดข้อมูลไม่ตรงตามข้อกำหนด
         raise ValueError("Need at least 50 test images and disjoint splits.")
     # สร้างโฟลเดอร์ผลลัพธ์และโฟลเดอร์ examples รวมถึงโฟลเดอร์แม่ที่ขาดหาย
-    (OUT / "examples").mkdir(parents=True, exist_ok=True)
-    # เลือก Threshold ที่ดีที่สุดจากชุด Validation และเก็บผลค้นหาทุกค่า
-    threshold, tuning = choose_threshold(split["validation"])
-    # แสดง Threshold ที่เลือกและบังคับให้ข้อความแสดงทันที
-    print(f"Validation selected threshold: {threshold}", flush=True)
+    (out_dir / "examples").mkdir(parents=True, exist_ok=True)
+
+    # เลือก Threshold ตามค่าคงที่หรือจากการจูนบนชุด Validation
+    if args.fixed_threshold is not None:
+        threshold = float(args.fixed_threshold)
+        tuning = [{"threshold": threshold, "mean_iou": None}]
+        print(f"Using fixed threshold: {threshold}", flush=True)
+    else:
+        # เลือก Threshold ที่ดีที่สุดจากชุด Validation และเก็บผลค้นหาทุกค่า
+        threshold, tuning = choose_threshold(
+            split["validation"],
+            data_dir=data_dir,
+            max_image_side=args.max_image_side,
+            threshold_min=args.threshold_min,
+            threshold_max=args.threshold_max,
+            threshold_step=args.threshold_step,
+            distance_scale=args.distance_scale,
+        )
+        # แสดง Threshold ที่เลือกและบังคับให้ข้อความแสดงทันที
+        print(f"Validation selected threshold: {threshold}", flush=True)
 
     # -------------------------------------------------------------------------
     # ส่วนที่ 6.1: การประเมินภาพ Test ก่อนและหลังทำ Morphology
@@ -168,13 +238,13 @@ def main():
     # วนทดสอบภาพทุกชื่อพร้อมเลขลำดับของภาพ
     for index, name in enumerate(split["test"]):
         # โหลดภาพ Ground truth และบริเวณที่ใช้ประเมินของภาพปัจจุบัน
-        rgb, truth, valid = load_sample(name)
+        rgb, truth, valid = load_sample(name, data_dir=data_dir, max_image_side=args.max_image_side)
         # คำนวณคะแนนความเป็นวัตถุของทุกพิกเซล
-        score = foreground_score(rgb)
+        score = foreground_score(rgb, distance_scale=args.distance_scale)
         # เปรียบเทียบคะแนนกับ Threshold เพื่อสร้าง Binary mask ก่อน Morphology
         raw = score >= threshold
         # ทำ Opening และ Closing เพื่อสร้าง Binary mask หลัง Morphology
-        cleaned = clean_mask(raw)
+        cleaned = clean_mask(raw, kernel_size=args.kernel_size)
         # วนประเมินผลทั้ง Mask ก่อนและหลังทำ Morphology
         for stage, prediction in [("before", raw), ("after", cleaned)]:
             # นับ TN, FP, FN และ TP จากพิกเซลที่ Valid เท่านั้น
@@ -192,7 +262,7 @@ def main():
         # อธิบายว่าบันทึกตัวอย่างทุกภาพโดยไม่คัดเลือกเฉพาะภาพที่ให้ผลดี
         # เก็บตัวอย่างทุกภาพ ไม่เลือกเฉพาะภาพที่ผลดี
         # บันทึกภาพเปรียบเทียบของตัวอย่างปัจจุบัน
-        save_example(name, rgb, truth, valid, raw, cleaned)
+        save_example(name, rgb, truth, valid, raw, cleaned, output_dir=out_dir)
         # แสดงความคืบหน้าพร้อมลำดับและชื่อภาพที่ประเมินเสร็จ
         print(f"Evaluated {index + 1}/{len(split['test'])}: {name}", flush=True)
 
@@ -214,7 +284,11 @@ def main():
         # บันทึก Threshold ที่เลือกจากชุด Validation
         "threshold": threshold,
         # บันทึกขนาดด้านยาวสูงสุดที่ใช้ย่อภาพ
-        "max_image_side": 256,
+        "max_image_side": args.max_image_side,
+        # บันทึกขนาด Kernel ของ Morphology
+        "kernel_size": args.kernel_size,
+        # บันทึกตัวหารปรับสเกลระยะห่างสี
+        "distance_scale": args.distance_scale,
         # บันทึก Label ของ Trimap ที่ไม่ถูกนำมาประเมิน
         "ignored_trimap_label": 3,
         # บันทึกจำนวนพิกเซลที่ถูกนำมาประเมินทั้งหมด
@@ -225,6 +299,8 @@ def main():
         **{stage: {**counts, **metrics(counts)} for stage, counts in totals.items()},
     # ปิด Dictionary สรุปผลการทดลอง
     }
+    if args.fixed_threshold is not None:
+        summary["fixed_threshold"] = args.fixed_threshold
 
     # -------------------------------------------------------------------------
     # ส่วนที่ 6.3: การบันทึกผลลัพธ์เป็น JSON และ CSV
@@ -232,9 +308,9 @@ def main():
     # วนชื่อไฟล์และข้อมูลสำหรับผลลัพธ์ JSON ทั้งสามไฟล์
     for filename, content in [("summary.json", summary), ("threshold_search.json", tuning), ("split.json", split)]:
         # แปลงข้อมูลเป็น JSON แบบเยื้องแล้วบันทึกด้วย UTF-8
-        write_commented_json(OUT / filename, content)
+        write_commented_json(out_dir / filename, content)
     # เปิดไฟล์ CSV ผลรายภาพในโหมดเขียนโดยไม่เพิ่มบรรทัดว่างซ้ำ
-    with (OUT / "per_image.csv").open("w", newline="", encoding="utf-8") as file:
+    with (out_dir / "per_image.csv").open("w", newline="", encoding="utf-8") as file:
         # สร้างตัวเขียน CSV โดยใช้ Key ของผลลัพธ์แถวแรกเป็นชื่อคอลัมน์
         writer = csv.DictWriter(file, fieldnames=list(rows[0]))
         # เขียนแถวชื่อคอลัมน์ลงไฟล์ CSV
@@ -243,55 +319,111 @@ def main():
         writer.writerows(rows)
 
     # -------------------------------------------------------------------------
-    # ส่วนที่ 6.4: การสร้างกราฟ Confusion matrix
+    # ส่วนที่ 6.4: การสร้างกราฟ Confusion matrix (ระบุ TP, TN, FP, FN ชัดเจน)
     # -------------------------------------------------------------------------
     # สร้าง Figure สำหรับ Confusion matrix ก่อนและหลัง Morphology สองช่อง
-    fig, axes = plt.subplots(1, 2, figsize=(9, 4))
-    # วนจับคู่ Axes กับชื่อขั้นตอนและยอดรวม Confusion matrix
+    fig, axes = plt.subplots(1, 2, figsize=(11, 5.2))
+    labels_map = [
+        [("TN", "True Negative\n(Background → Background)"), ("FP", "False Positive\n(Background → Pet)")],
+        [("FN", "False Negative\n(Pet → Background)"), ("TP", "True Positive\n(Pet → Pet)")],
+    ]
     for ax, (stage, counts) in zip(axes, totals.items()):
         # จัด TN, FP, FN และ TP เป็นเมทริกซ์ขนาด 2 คูณ 2
         matrix = np.array([[counts["TN"], counts["FP"]], [counts["FN"], counts["TP"]]])
-        # แสดงเมทริกซ์เป็นภาพ Heatmap โทนสีน้ำเงิน
         ax.imshow(matrix, cmap="Blues")
-        # วนตำแหน่งแถว คอลัมน์ และค่าของทุกช่องในเมทริกซ์
         for (row, col), value in np.ndenumerate(matrix):
-            # เขียนจำนวนพิกเซลกลางช่องและเลือกสีข้อความตามความเข้มของพื้นหลัง
-            ax.text(col, row, f"{value:,}", ha="center", va="center", color="white" if value > matrix.max() / 2 else "black")
-        # กำหนด Tick ชื่อคลาส ชื่อแกน และหัวข้อของ Confusion matrix ปัจจุบัน
-        ax.set(xticks=[0, 1], yticks=[0, 1], xticklabels=["Background", "Pet"], yticklabels=["Background", "Pet"], xlabel="Predicted", ylabel="Actual", title=stage.title())
-    # ปรับระยะห่างขององค์ประกอบใน Figure Confusion matrix
+            abbr, desc = labels_map[row][col]
+            text_color = "white" if value > matrix.max() * 0.45 else "black"
+            # แสดงชื่อย่อ TP, TN, FP, FN ตัวหนาขนาดใหญ่
+            ax.text(col, row - 0.13, abbr, ha="center", va="center", color=text_color, fontsize=15, fontweight="bold")
+            # แสดงจำนวนพิกเซลจริง
+            ax.text(col, row + 0.07, f"{value:,}", ha="center", va="center", color=text_color, fontsize=12, fontweight="medium")
+            # แสดงคำอธิบายการทำนายสั้นๆ
+            sub_desc = desc.splitlines()[1].strip("()")
+            ax.text(col, row + 0.23, f"({sub_desc})", ha="center", va="center", color=text_color, fontsize=8.5, alpha=0.9)
+        # กำหนด Tick และชื่อแกนอย่างชัดเจน
+        ax.set(
+            xticks=[0, 1],
+            yticks=[0, 1],
+            xticklabels=["Background\n(Predicted)", "Pet\n(Predicted)"],
+            yticklabels=["Background\n(Actual)", "Pet\n(Actual)"],
+            xlabel="Predicted Class",
+            ylabel="Actual Class",
+            title=f"Stage: {stage.title()}"
+        )
+    fig.suptitle("Pixel-Level Confusion Matrix (TP, TN, FP, FN Breakdown)", fontsize=13, fontweight="bold", y=0.98)
     fig.tight_layout()
-    # บันทึก Figure Confusion matrix ด้วยความละเอียด 150 DPI
-    fig.savefig(OUT / "confusion_matrix.png", dpi=150)
-    # ปิด Figure Confusion matrix เพื่อคืนหน่วยความจำ
+    fig.savefig(out_dir / "confusion_matrix.png", dpi=160, bbox_inches="tight")
     plt.close(fig)
 
     # -------------------------------------------------------------------------
-    # ส่วนที่ 6.5: การสร้าง ROC curve และจุดทำงานของ Binary mask
+    # ส่วนที่ 6.5: การสร้าง ROC curve และจุดทำงานของ Binary mask พร้อมคำอธิบาย
     # -------------------------------------------------------------------------
-    # สร้าง Figure และ Axes สำหรับ ROC curve
-    fig, ax = plt.subplots(figsize=(6, 5))
-    # วาด ROC curve ของคะแนนความต่างสีพร้อมแสดงค่า AUC ในคำอธิบายเส้น
-    ax.plot(fpr, tpr, label=f"Color-distance score (AUC={auc:.3f})")
-    # วาดเส้นทแยงอ้างอิงของตัวจำแนกแบบสุ่ม
-    ax.plot([0, 1], [0, 1], "--", color="gray")
-    # อธิบายว่า Binary mask หลัง Morphology แสดงได้เป็นจุดทำงาน ไม่ใช่ ROC curve ต่อเนื่อง
-    # Morphology ให้ binary mask จึงแสดงเป็นจุดทำงาน ไม่สร้าง ROC จาก mask 0/1
-    # วนข้อมูลก่อนและหลัง Morphology เพื่อเพิ่มจุดทำงานลงกราฟ
+    # สร้าง Figure และ Axes สำหรับ ROC curve ขนาดใหญ่ชัดเจน
+    fig, ax = plt.subplots(figsize=(8, 7.2))
+    # วาดเส้น ROC ของคะแนนความต่างสีต่อเนื่อง
+    ax.plot(fpr, tpr, color="#1f77b4", linewidth=2.3, label=f"Color-distance score curve (AUC = {auc:.3f})")
+    # วาดเส้นประอ้างอิงการสุ่มเดา
+    ax.plot([0, 1], [0, 1], "--", color="gray", linewidth=1.5, label="Random guess baseline (AUC = 0.500)")
+
+    # พล็อตจุดทำงานของ Before และ After
+    colors = {"before": "#ff7f0e", "after": "#2ca02c"}
+    pts = {}
     for stage, counts in totals.items():
-        # คำนวณ False positive rate จาก FP หารด้วยพิกเซลพื้นหลังจริงทั้งหมด
         fp_rate = counts["FP"] / (counts["FP"] + counts["TN"])
-        # วาดจุดทำงานด้วย False positive rate และ Recall ของขั้นตอนปัจจุบัน
-        ax.scatter(fp_rate, metrics(counts)["recall"], label=stage.title(), s=45)
-    # กำหนดชื่อแกน หัวข้อ และช่วงค่าของ ROC curve
-    ax.set(xlabel="False positive rate", ylabel="True positive rate", title="Test pixels: ROC", xlim=(0, 1), ylim=(0, 1))
-    # แสดงคำอธิบายเส้นและจุดที่มุมขวาล่างของกราฟ
-    ax.legend(loc="lower right")
-    # ปรับระยะห่างขององค์ประกอบใน Figure ROC curve
+        rec = metrics(counts)["recall"]
+        pts[stage] = (fp_rate, rec)
+        ax.scatter(fp_rate, rec, color=colors[stage], label=f"Operating Point: {stage.title()}", s=110, zorder=5)
+
+    # ใส่คำอธิบายพร้อมลูกศรชี้จุด Before
+    ax.annotate(
+        f"Before (Threshold={threshold:.2f})\nFPR={pts['before'][0]:.3f}, TPR={pts['before'][1]:.3f}",
+        xy=pts["before"],
+        xytext=(pts["before"][0] + 0.08, pts["before"][1] - 0.09),
+        arrowprops=dict(facecolor="#ff7f0e", edgecolor="#ff7f0e", shrink=0.08, width=1.5, headwidth=6),
+        fontsize=9,
+        fontweight="bold",
+        bbox=dict(boxstyle="round,pad=0.4", fc="#fff8e1", ec="#ff7f0e", lw=1.3),
+        zorder=6
+    )
+    # ใส่คำอธิบายพร้อมลูกศรชี้จุด After
+    ax.annotate(
+        f"After Morphology\nFPR={pts['after'][0]:.3f}, TPR={pts['after'][1]:.3f}\n(FPR drops: noise removed)",
+        xy=pts["after"],
+        xytext=(pts["after"][0] - 0.38, pts["after"][1] + 0.06),
+        arrowprops=dict(facecolor="#2ca02c", edgecolor="#2ca02c", shrink=0.08, width=1.5, headwidth=6),
+        fontsize=9,
+        fontweight="bold",
+        bbox=dict(boxstyle="round,pad=0.4", fc="#e8f5e9", ec="#2ca02c", lw=1.3),
+        zorder=6
+    )
+
+    # กล่องข้อความอธิบายว่าทำไมมีเพียงเส้นเดียว
+    why_one_line = (
+        "WHY ONLY 1 ROC CURVE (NOT TWO)?\n"
+        "1. The solid curve requires continuous scores (0.0 to 1.0) to sweep thresholds.\n"
+        "2. Morphology operates on a binary mask (0 or 1) with no continuous probabilities.\n"
+        "   Thus, Morphology forms a single discrete Operating Point (Dot), not a new curve."
+    )
+    ax.text(
+        0.03, 0.03, why_one_line,
+        transform=ax.transAxes,
+        fontsize=8.5,
+        verticalalignment="bottom",
+        bbox=dict(boxstyle="round,pad=0.5", facecolor="#f8f9fa", edgecolor="#adb5bd", lw=1.2, alpha=0.95)
+    )
+
+    ax.set(
+        xlabel="False Positive Rate (FPR = FP / [FP + TN])",
+        ylabel="True Positive Rate (TPR / Recall = TP / [TP + FN])",
+        title="Test Pixels: ROC Curve & Operating Points",
+        xlim=(-0.02, 1.02),
+        ylim=(-0.02, 1.05)
+    )
+    ax.grid(True, linestyle=":", alpha=0.6)
+    ax.legend(loc="lower right", framealpha=0.95, fontsize=9.5)
     fig.tight_layout()
-    # บันทึก Figure ROC curve ด้วยความละเอียด 150 DPI
-    fig.savefig(OUT / "roc_curve.png", dpi=150)
-    # ปิด Figure ROC curve เพื่อคืนหน่วยความจำ
+    fig.savefig(out_dir / "roc_curve.png", dpi=160, bbox_inches="tight")
     plt.close(fig)
 
     # -------------------------------------------------------------------------
@@ -344,7 +476,7 @@ def main():
     # ปิด List ของข้อความที่เพิ่มต่อท้ายรายงาน
     ]
     # รวมข้อความด้วยอักขระขึ้นบรรทัดใหม่และบันทึกเป็นไฟล์ Markdown แบบ UTF-8
-    (OUT / "RESULTS.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (out_dir / "RESULTS.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     # แสดงข้อมูลสรุปเป็น JSON แบบเยื้องบนหน้าจอ
     print(json.dumps(summary, indent=2))
 

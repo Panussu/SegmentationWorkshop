@@ -1,0 +1,22 @@
+{
+  "_comment": {
+    "max_image_side": "ความยาวด้านที่ยาวที่สุดหลังย่อภาพ (พิกเซล)",
+    "threshold_min": "ค่า Threshold ต่ำสุดในการค้นหาจาก validation",
+    "threshold_max": "ค่า Threshold สูงสุดในการค้นหาจาก validation",
+    "threshold_step": "สเต็ปในการค้นหา Threshold",
+    "fixed_threshold": "กำหนด Threshold เองโดยตรง (ระบุตัวเลข เช่น 0.40 หรือใส่ null เพื่อให้ค้นหาอัตโนมัติ)",
+    "kernel_size": "ขนาด Kernel สำหรับ Morphology (ต้องเป็นเลขคี่บวก เช่น 3, 5, 7)",
+    "distance_scale": "ตัวหารปรับสเกลคะแนนระยะสีใน foreground_score (ค่าเริ่มต้น 50.0)",
+    "data_dir": "โฟลเดอร์เก็บข้อมูล",
+    "output_dir": "โฟลเดอร์บันทึกผลลัพธ์"
+  },
+  "max_image_side": 256,
+  "threshold_min": 0.10,
+  "threshold_max": 0.90,
+  "threshold_step": 0.05,
+  "fixed_threshold": null,
+  "kernel_size": 3,
+  "distance_scale": 50.0,
+  "data_dir": "data",
+  "output_dir": "outputs"
+}

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Segmentation Workshop: Interactive Guide & Explainer</title>
+  <meta name="description" content="คู่มือเชิงลึกแบบ Interactive อธิบาย Confusion Matrix, ROC Curve, ระบบสี 0-255, และหลักการประเมิน Image Segmentation">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header & Navigation -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <span class="brand-icon">🐾</span>
+        <div>
+          <h1 class="brand-title">Segmentation Workshop Explorer</h1>
+          <p class="brand-sub">Oxford-IIIT Pet Dataset • Interactive Educational Guide</p>
+        </div>
+      </div>
+      <nav class="nav-links">
+        <a href="#confusion-section" class="nav-link active">Confusion Matrix (TP, TN, FP, FN)</a>
+        <a href="#roc-section" class="nav-link">ROC Curve & Dots</a>
+        <a href="#pixel-section" class="nav-link">Pixel 0–255 & Colors</a>
+        <a href="#metrics-section" class="nav-link">สูตรคำนวณ Metrics</a>
+      </nav>
+      <div class="theme-badge">Interactive Mode</div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Hero Banner -->
+    <section class="hero-banner">
+      <div class="hero-content">
+        <h2>เจาะลึกการตัดแบ่งภาพสัตว์เลี้ยง (Image Segmentation)</h2>
+        <p>ทำความเข้าใจทุกตาราง ทุกเส้น ทุกจุดพิกัด และการคำนวณเบื้องหลัง Oxford-IIIT Pet Dataset ตั้งแต่ระดับ 0–255 ไปจนถึง Confusion Matrix และ ROC Curve</p>
+        <div class="badge-row">
+          <span class="badge blue">📊 50 ภาพทดสอบจริง</span>
+          <span class="badge purple">🎯 2,139,052 พิกเซลที่ประเมิน</span>
+          <span class="badge green">✨ ROC AUC = 0.744</span>
+          <span class="badge amber">⚙️ Threshold = 0.40</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1: CONFUSION MATRIX EXPLORER -->
+    <section id="confusion-section" class="section-card">
+      <div class="section-header">
+        <div class="title-with-pill">
+          <span class="pill">Section 1</span>
+          <h3>Confusion Matrix: TP, TN, FP, FN คืออะไรในภาพสัตว์เลี้ยง?</h3>
+        </div>
+        <!-- Toggle Before vs After -->
+        <div class="toggle-group" id="stage-toggle-group">
+          <button class="toggle-btn active" id="btn-stage-before" onclick="setStage('before')">Before Morphology (ก่อนเปิด-ปิด)</button>
+          <button class="toggle-btn" id="btn-stage-after" onclick="setStage('after')">After Morphology (หลังเปิด-ปิด)</button>
+        </div>
+      </div>
+
+      <div class="matrix-layout">
+        <!-- 2x2 Interactive Matrix Grid -->
+        <div class="matrix-container">
+          <div class="axis-label-col">
+            <span class="axis-title">Actual (ของจริง)</span>
+            <span class="axis-sub">Background (0)</span>
+            <span class="axis-sub">Pet (1)</span>
+          </div>
+
+          <div class="matrix-grid-wrapper">
+            <div class="axis-label-row">
+              <span class="axis-title-x">Predicted Class (สิ่งที่โปรแกรมทาย)</span>
+              <div class="axis-row-cols">
+                <span>Background (0)</span>
+                <span>Pet / Animal (1)</span>
+              </div>
+            </div>
+
+            <div class="grid-2x2">
+              <!-- TN -->
+              <div class="matrix-cell tn-cell" id="cell-tn" onclick="selectCell('TN')">
+                <div class="cell-badge">TN</div>
+                <div class="cell-name">True Negative</div>
+                <div class="cell-value" id="val-tn">767,091</div>
+                <div class="cell-unit">พิกเซล</div>
+                <div class="cell-desc">พื้นหลังจริง → ทายถูกว่าเป็นพื้นหลัง</div>
+                <div class="cell-hint">คลิกเพื่อดูรายละเอียด 💡</div>
+              </div>
+
+              <!-- FP -->
+              <div class="matrix-cell fp-cell" id="cell-fp" onclick="selectCell('FP')">
+                <div class="cell-badge">FP</div>
+                <div class="cell-name">False Positive</div>
+                <div class="cell-value" id="val-fp">656,811</div>
+                <div class="cell-unit">พิกเซล</div>
+                <div class="cell-desc">พื้นหลังจริง → ทายผิดว่าเป็นสัตว์ (ขอบเกิน)</div>
+                <div class="cell-hint">คลิกเพื่อดูรายละเอียด 💡</div>
+              </div>
+
+              <!-- FN -->
+              <div class="matrix-cell fn-cell" id="cell-fn" onclick="selectCell('FN')">
+                <div class="cell-badge">FN</div>
+                <div class="cell-name">False Negative</div>
+                <div class="cell-value" id="val-fn">150,671</div>
+                <div class="cell-unit">พิกเซล</div>
+                <div class="cell-desc">สัตว์จริง → ทายผิดว่าเป็นพื้นหลัง (ตัวแหว่ง)</div>
+                <div class="cell-hint">คลิกเพื่อดูรายละเอียด 💡</div>
+              </div>
+
+              <!-- TP -->
+              <div class="matrix-cell tp-cell" id="cell-tp" onclick="selectCell('TP')">
+                <div class="cell-badge">TP</div>
+                <div class="cell-name">True Positive</div>
+                <div class="cell-value" id="val-tp">564,479</div>
+                <div class="cell-unit">พิกเซล</div>
+                <div class="cell-desc">สัตว์จริง → ทายถูกว่าเป็นสัตว์ (จับตัวได้)</div>
+                <div class="cell-hint">คลิกเพื่อดูรายละเอียด 💡</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detail Explanation Panel -->
+        <div class="cell-detail-panel" id="cell-detail-box">
+          <div class="detail-header">
+            <span class="detail-tag" id="detail-tag">TN: True Negative</span>
+            <span class="detail-status success" id="detail-status">ทำนายถูกต้อง (Correct)</span>
+          </div>
+          <h4 id="detail-title">พิกเซลพื้นหลัง ที่ทายถูกว่าเป็นพื้นหลัง</h4>
+          <p id="detail-desc" class="detail-p">
+            พิกเซลเหล่านี้คือสนามหญ้า พรม โซฟา หรือฉากหลังที่ระบบระบุได้อย่างถูกต้องว่าเป็นพื้นหลัง (Mask มีค่าเป็นสีดำ 0)
+          </p>
+          <div class="visual-explanation" id="detail-visual">
+            <div class="vis-box vis-black">
+              <span>Ground Truth: ดำ (0)</span>
+            </div>
+            <span class="vis-arrow">➔</span>
+            <div class="vis-box vis-black">
+              <span>Predicted: ดำ (0)</span>
+            </div>
+            <span class="vis-result ok">✅ แม่นยำ</span>
+          </div>
+          <div class="detail-impact">
+            <strong>ผลกระทบต่อตัวชี้วัด:</strong>
+            <span id="detail-impact-text">ช่วยเพิ่มค่า Accuracy ให้สูงขึ้นอย่างมาก เพราะพื้นหลังมีจำนวนพื้นที่ส่วนใหญ่ของภาพ</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: ROC CURVE & OPERATING POINTS -->
+    <section id="roc-section" class="section-card">
+      <div class="section-header">
+        <div class="title-with-pill">
+          <span class="pill">Section 2</span>
+          <h3>ROC Curve: เส้นโค้ง และ "จุดกลม (Dot)" หมายถึงอะไร?</h3>
+        </div>
+      </div>
+
+      <div class="roc-layout">
+        <!-- Interactive SVG ROC Curve -->
+        <div class="roc-plot-card">
+          <div class="plot-topbar">
+            <span>Test Pixels: ROC Curve (AUC = 0.744)</span>
+            <div class="plot-legend">
+              <span class="leg-item"><span class="leg-line blue-line"></span> เส้นความต่างสี (Continuous)</span>
+              <span class="leg-item"><span class="leg-dot orange-dot"></span> จุด Before</span>
+              <span class="leg-item"><span class="leg-dot green-dot"></span> จุด After</span>
+            </div>
+          </div>
+
+          <div class="svg-container">
+            <svg id="roc-svg" viewBox="0 0 500 450" class="roc-svg">
+              <!-- Grid lines -->
+              <line x1="50" y1="40" x2="470" y2="40" class="grid-line" />
+              <line x1="50" y1="120" x2="470" y2="120" class="grid-line" />
+              <line x1="50" y1="200" x2="470" y2="200" class="grid-line" />
+              <line x1="50" y1="280" x2="470" y2="280" class="grid-line" />
+              <line x1="50" y1="360" x2="470" y2="360" class="grid-line" />
+
+              <line x1="50" y1="40" x2="50" y2="360" class="axis-line" />
+              <line x1="155" y1="40" x2="155" y2="360" class="grid-line" />
+              <line x1="260" y1="40" x2="260" y2="360" class="grid-line" />
+              <line x1="365" y1="40" x2="365" y2="360" class="grid-line" />
+              <line x1="470" y1="40" x2="470" y2="360" class="axis-line" />
+              <line x1="50" y1="360" x2="470" y2="360" class="axis-line" />
+
+              <!-- Diagonal Random Guess Line -->
+              <line x1="50" y1="360" x2="470" y2="40" class="random-line" stroke-dasharray="6,6" />
+
+              <!-- Smooth ROC Curve -->
+              <path id="roc-path" d="M 50 360 C 70 240, 150 140, 243 107 C 330 76, 400 48, 470 40" class="curve-path" />
+
+              <!-- Before Dot -->
+              <g id="dot-before-group" class="svg-point" onclick="highlightPoint('before')">
+                <circle cx="243.6" cy="107.4" r="8" class="svg-dot dot-before" />
+                <circle cx="243.6" cy="107.4" r="14" class="svg-dot-pulse pulse-before" />
+                <text x="255" y="112" class="svg-label">Before (0.40)</text>
+              </g>
+
+              <!-- After Dot -->
+              <g id="dot-after-group" class="svg-point" onclick="highlightPoint('after')">
+                <circle cx="230.1" cy="109.5" r="8" class="svg-dot dot-after" />
+                <circle cx="230.1" cy="109.5" r="14" class="svg-dot-pulse pulse-after" />
+                <text x="145" y="100" class="svg-label">After (Morphology)</text>
+              </g>
+
+              <!-- Dynamic Interactive Threshold Marker on Curve -->
+              <g id="dynamic-marker-group">
+                <circle id="dynamic-marker" cx="243.6" cy="107.4" r="6" class="dynamic-dot" />
+              </g>
+
+              <!-- Axes Text -->
+              <text x="260" y="400" class="axis-title-text" text-anchor="middle">False Positive Rate (FPR)</text>
+              <text x="25" y="200" class="axis-title-text axis-y-text" text-anchor="middle" transform="rotate(-90 25 200)">True Positive Rate (TPR / Recall)</text>
+
+              <text x="50" y="378" class="tick-text" text-anchor="middle">0.0</text>
+              <text x="155" y="378" class="tick-text" text-anchor="middle">0.25</text>
+              <text x="260" y="378" class="tick-text" text-anchor="middle">0.50</text>
+              <text x="365" y="378" class="tick-text" text-anchor="middle">0.75</text>
+              <text x="470" y="378" class="tick-text" text-anchor="middle">1.0</text>
+
+              <text x="40" y="364" class="tick-text" text-anchor="end">0.0</text>
+              <text x="40" y="284" class="tick-text" text-anchor="end">0.25</text>
+              <text x="40" y="204" class="tick-text" text-anchor="end">0.50</text>
+              <text x="40" y="124" class="tick-text" text-anchor="end">0.75</text>
+              <text x="40" y="44" class="tick-text" text-anchor="end">1.0</text>
+            </svg>
+          </div>
+
+          <!-- Slider Simulator -->
+          <div class="slider-box">
+            <div class="slider-header">
+              <span>🕹️ จำลองเลื่อนค่า Threshold บนเส้นโค้ง:</span>
+              <strong id="slider-threshold-val">0.40</strong>
+            </div>
+            <input type="range" id="threshold-slider" min="0.10" max="0.90" step="0.05" value="0.40" oninput="updateRocSlider(this.value)">
+            <div class="slider-stats">
+              <span>Estimated FPR: <strong id="sim-fpr">0.461</strong></span>
+              <span>Estimated TPR (Recall): <strong id="sim-tpr">0.789</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Explanations: Why only ONE curve? -->
+        <div class="roc-qa-card">
+          <div class="qa-item highlight">
+            <h4>❓ ทำไมในกราฟ ROC ถึงมีเส้นโค้งแค่ "เส้นเดียว" ไม่ได้มีสองเส้น?</h4>
+            <p>
+              <strong>เส้นโค้ง (Curve)</strong> จะเกิดขึ้นได้ก็ต่อเมื่อมี <em>"คะแนนความน่าจะเป็นต่อเนื่อง (0.0 ถึง 1.0)"</em> ซึ่งช่วยให้เราสามารถค่อยๆ เลื่อนค่า Threshold จาก 0 ถึง 1 แล้วคำนวณจุด (FPR, TPR) มาต่อกันจนเกิดเป็นเส้นโค้งได้
+            </p>
+            <p>
+              แต่กระบวนการ <strong>Morphology (After)</strong> กระทำบนภาพ <strong>Binary Mask ขาว-ดำ (มีแค่ 0 กับ 1 เท่านั้น)</strong> ไม่ได้ส่งคะแนนทศนิยมต่อเนื่องออกมา จึงไม่มีค่าตัวเลขให้เลื่อน Threshold อีกต่อไป ทำให้ผลลัพธ์ของ Morphology ปรากฏได้เป็นแค่ <strong>"จุดพิกัดเดี่ยวๆ (Operating Point)"</strong> จุดเดียวบนกราฟ ไม่สามารถสร้างเป็นเส้นโค้งที่สองได้ครับ
+            </p>
+          </div>
+
+          <div class="qa-item">
+            <h4>🔵 เส้นทึบสีน้ำเงิน คืออะไร?</h4>
+            <p>คือ <strong>ROC Curve</strong> ของคะแนนความต่างสี (Color Distance Score) คำนวณจากทุกพิกเซล ยิ่งโค้งโป่งชิดมุมบนซ้ายมากเท่าไหร่ พื้นที่ใต้กราฟ (AUC) จะยิ่งเข้าใกล้ 1.0 แปลว่าระบบแยกแยะสีสัตว์ออกจากพื้นหลังได้ดีขึ้น</p>
+          </div>
+
+          <div class="qa-item">
+            <h4>⚪ เส้นประสีเทา คืออะไร?</h4>
+            <p>คือ <strong>เส้นเดาสุ่ม (Random Guess Baseline)</strong> เทียบเท่ากับการโยนเหรียญเดา (AUC = 0.50) เส้นสีน้ำเงินที่โป่งขึ้นเหนือเส้นประนี้ พิสูจน์ว่าระบบสีมีประสิทธิภาพดีกว่าการสุ่มเดาอย่างมีนัยสำคัญ</p>
+          </div>
+
+          <div class="qa-item">
+            <h4>🟠 จุด Before กับ 🟢 จุด After คืออะไร?</h4>
+            <p>
+              คือ <strong>จุดทำงานจริง (Operating Points)</strong> ณ สถานะที่เราตัดสินใจใช้งาน:
+              <br>• <strong>Before:</strong> ตัด Threshold = 0.40 ตรงๆ (FPR=0.461, TPR=0.789)
+              <br>• <strong>After:</strong> นำไปขัดเกลาด้วย Morphology (FPR=0.429, TPR=0.783) จะเห็นว่าจุดขยับมา <strong>ทางซ้าย</strong> แปลว่า <em>ลดอัตราการทายพื้นหลังผิดลงได้สำเร็จ!</em>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: 0–255 PIXEL INTENSITY & COLOR SPACE -->
+    <section id="pixel-section" class="section-card">
+      <div class="section-header">
+        <div class="title-with-pill">
+          <span class="pill">Section 3</span>
+          <h3>ระดับความสว่าง 0–255 และบทบาทในโปรเจกต์นี้</h3>
+        </div>
+      </div>
+
+      <div class="pixel-layout">
+        <!-- Interactive 0-255 Slider Box -->
+        <div class="pixel-demo-box">
+          <h4>🎨 จำลองสเกลพิกเซล 0–255 (Grayscale Intensity)</h4>
+          <p>ในคอมพิวเตอร์วิทัศน์ ค่าพิกเซล 8-bit จะมีค่าตั้งแต่ 0 ถึง 255:</p>
+
+          <div class="pixel-color-preview" id="pixel-preview-box">
+            <span id="pixel-hex-text">Value: 128 / 255</span>
+          </div>
+
+          <div class="pixel-slider-row">
+            <span>0 (มืดสุด / ดำสนิท)</span>
+            <input type="range" id="gray-slider" min="0" max="255" value="128" oninput="updateGraySlider(this.value)">
+            <span>255 (สว่างสุด / ขาวสนิท)</span>
+          </div>
+
+          <div class="scale-benchmark-grid">
+            <div class="bench-item" onclick="setGrayPreset(0)">
+              <div class="bench-swatch black-swatch"></div>
+              <strong>0 (Pure Black)</strong>
+              <span>Background (พื้นหลัง)</span>
+            </div>
+            <div class="bench-item" onclick="setGrayPreset(128)">
+              <div class="bench-swatch gray-swatch"></div>
+              <strong>128 (Mid Gray)</strong>
+              <span>Trimap 3 (ขอบที่ไม่แน่นอน)</span>
+            </div>
+            <div class="bench-item" onclick="setGrayPreset(255)">
+              <div class="bench-swatch white-swatch"></div>
+              <strong>255 (Pure White)</strong>
+              <span>Pet Foreground (ตัวสัตว์)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Color Distance & CIELAB Explanation -->
+        <div class="cielab-box">
+          <h4>🧪 ทำไมโปรเจกต์ถึงใช้ระบบสี CIELAB แทน RGB ธรรมดา?</h4>
+          <p>
+            ในระบบ RGB ระยะห่างของตัวเลขไม่ได้สอดคล้องกับความรู้สึกของตามนุษย์ (เช่น แสงไฟเปลี่ยนเพียงนิดเดียว ค่า RGB จะกระโดดไปไกลมาก)
+          </p>
+          <div class="lab-pill-grid">
+            <div class="lab-pill">
+              <strong>L* (Lightness)</strong>
+              <span>ความสว่าง (0 = มืดสุด, 100 = ขาวสุด)</span>
+            </div>
+            <div class="lab-pill">
+              <strong>a* (Green ➔ Red)</strong>
+              <span>แกนเฉดสีเขียวถึงสีแดง</span>
+            </div>
+            <div class="lab-pill">
+              <strong>b* (Blue ➔ Yellow)</strong>
+              <span>แกนเฉดสีน้ำเงินถึงสีเหลือง</span>
+            </div>
+          </div>
+          <div class="formula-box">
+            <code>distance = √[(L - L_bg)² + (a - a_bg)² + (b - b_bg)²]</code>
+            <code>score = distance / (distance + 50.0)</code>
+          </div>
+          <p class="formula-note">
+            💡 <strong>ยิ่งสีต่างจากขอบภาพมาก:</strong> ค่า distance จะสูง $\rightarrow$ score เข้าใกล้ 1.0 $\rightarrow$ เมื่อ $\text{score} \ge 0.40$ ระบบจะเปลี่ยนพิกเซลนั้นเป็น <strong>255 (ขาว/สัตว์)</strong> ทันที
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: LIVE METRICS CALCULATOR -->
+    <section id="metrics-section" class="section-card">
+      <div class="section-header">
+        <div class="title-with-pill">
+          <span class="pill">Section 4</span>
+          <h3>สูตรคำนวณตัวชี้วัด (Metrics Formulas) คำนวณอย่างไร?</h3>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <!-- Accuracy -->
+        <div class="metric-card">
+          <div class="metric-top">
+            <span class="metric-name">Accuracy (ความแม่นยำรวม)</span>
+            <span class="metric-score" id="m-acc">62.25%</span>
+          </div>
+          <div class="metric-formula">
+            <code>(TP + TN) / (TP + TN + FP + FN)</code>
+          </div>
+          <p class="metric-explanation">
+            สัดส่วนพิกเซลที่ทำนายถูกทั้งหมด ไม่ว่าจะทายถูกว่าเป็นสัตว์หรือทายถูกว่าเป็นพื้นหลัง
+          </p>
+        </div>
+
+        <!-- Precision -->
+        <div class="metric-card">
+          <div class="metric-top">
+            <span class="metric-name">Precision (ความแม่นยำเมื่อทายสัตว์)</span>
+            <span class="metric-score" id="m-prec">46.22%</span>
+          </div>
+          <div class="metric-formula">
+            <code>TP / (TP + FP)</code>
+          </div>
+          <p class="metric-explanation">
+            ในบรรดาพิกเซลทั้งหมดที่โปรแกรมบอกว่าเป็นสัตว์ มีสัตว์อยู่จริงๆ กี่เปอร์เซ็นต์
+          </p>
+        </div>
+
+        <!-- Recall -->
+        <div class="metric-card">
+          <div class="metric-top">
+            <span class="metric-name">Recall (ความไว / ความครอบคลุม)</span>
+            <span class="metric-score" id="m-rec">78.93%</span>
+          </div>
+          <div class="metric-formula">
+            <code>TP / (TP + FN)</code>
+          </div>
+          <p class="metric-explanation">
+            ตัวสัตว์จริงทั้งหมดในภาพ โปรแกรมสามารถตรวจจับได้กี่เปอร์เซ็นต์
+          </p>
+        </div>
+
+        <!-- IoU -->
+        <div class="metric-card highlight-border">
+          <div class="metric-top">
+            <span class="metric-name">IoU (Intersection over Union)</span>
+            <span class="metric-score" id="m-iou">0.4114</span>
+          </div>
+          <div class="metric-formula">
+            <code>TP / (TP + FP + FN)</code>
+          </div>
+          <p class="metric-explanation">
+            พื้นที่ทับซ้อนจริง หารด้วยพื้นที่รวมทั้งหมดของสัตว์จริงและส่วนที่ทำนาย (เป็นตัววัดมาตรฐานของ Segmentation)
+          </p>
+        </div>
+
+        <!-- Dice -->
+        <div class="metric-card">
+          <div class="metric-top">
+            <span class="metric-name">Dice Coefficient (F1-Score)</span>
+            <span class="metric-score" id="m-dice">0.5830</span>
+          </div>
+          <div class="metric-formula">
+            <code>2TP / (2TP + FP + FN)</code>
+          </div>
+          <p class="metric-explanation">
+            ค่าเฉลี่ยฮาร์โมนิกระหว่าง Precision และ Recall ให้ความสำคัญกับความทับซ้อนของตัวสัตว์
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Segmentation Workshop Interactive Guide • Oxford-IIIT Pet Dataset • Developed for Computer Vision Education</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

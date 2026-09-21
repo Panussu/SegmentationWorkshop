@@ -13,7 +13,7 @@ import numpy as np
 # ส่วนที่ 2: การคำนวณคะแนนความเป็นวัตถุจากความแตกต่างของสี
 # =============================================================================
 # ประกาศฟังก์ชันสำหรับคำนวณคะแนนความเป็นวัตถุของแต่ละพิกเซล
-def foreground_score(rgb):
+def foreground_score(rgb, distance_scale=50.0):
     # อธิบายข้อมูลนำเข้าและผลลัพธ์ของฟังก์ชัน foreground_score
     """รับภาพ RGB คืนคะแนน 0..1 ต่อพิกเซล โดยไม่ใช้ Ground truth."""
     # อธิบายเหตุผลที่แปลงภาพจาก RGB ไปเป็นระบบสี Lab
@@ -30,19 +30,22 @@ def foreground_score(rgb):
     distance = np.linalg.norm(lab - background, axis=2)
     # อธิบายว่าคะแนนนี้เป็นค่าระยะห่างที่ปรับสเกล ไม่ใช่ค่าความน่าจะเป็นจากโมเดล
     # คะแนนเป็นระยะห่างที่ปรับสเกล ไม่ใช่ probability ที่ผ่านการ calibration
-    # ปรับระยะห่างให้อยู่ในช่วง 0 ถึง 1 แล้วส่งอาร์เรย์คะแนนกลับไป
-    return distance / (distance + 50.0)
+    # ปรับระยะห่างให้อยู่ในช่วง 0 ถึง 1 ด้วยตัวหาร distance_scale แล้วส่งอาร์เรย์คะแนนกลับไป
+    return distance / (distance + float(distance_scale))
 
 
 # =============================================================================
 # ส่วนที่ 3: การทำความสะอาด Binary mask ด้วย Morphology
 # =============================================================================
 # ประกาศฟังก์ชันสำหรับลดจุดรบกวนและเติมช่องว่างขนาดเล็กใน Binary mask
-def clean_mask(mask):
+def clean_mask(mask, kernel_size=3):
     # อธิบายลำดับ Morphology และขนาด Kernel ที่ฟังก์ชันใช้
-    """Opening ลบจุดเล็ก; Closing เติมช่องว่างเล็ก ด้วย kernel 3x3."""
-    # สร้าง Kernel รูปวงรีขนาด 3 คูณ 3 สำหรับทำ Morphology
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    """Opening ลบจุดเล็ก; Closing เติมช่องว่างเล็ก ด้วย kernel_size (ค่าเริ่มต้น 3x3)."""
+    # ตรวจสอบว่า kernel_size เป็นเลขคี่บวก
+    if kernel_size < 1 or kernel_size % 2 == 0:
+        raise ValueError(f"kernel_size must be an odd positive integer, got {kernel_size}")
+    # สร้าง Kernel รูปวงรีขนาด kernel_size x kernel_size สำหรับทำ Morphology
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
     # แปลง Mask เป็น uint8 แล้วทำ Opening เพื่อลบจุดวัตถุขนาดเล็ก
     opened = cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_OPEN, kernel)
     # ทำ Closing เพื่อเติมช่องว่างเล็ก แปลงผลเป็น Boolean และส่งกลับ

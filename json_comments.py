@@ -25,6 +25,9 @@ COMMENTS = {
     "recall": "สัดส่วนสัตว์จริงที่ตรวจพบ: TP / (TP + FN)",
     "iou": "พื้นที่ทับซ้อนหารพื้นที่รวม: TP / (TP + FP + FN)",
     "dice": "คะแนนความซ้อนทับ: 2TP / (2TP + FP + FN)",
+    "kernel_size": "ขนาด Kernel สำหรับ Morphology (Opening และ Closing)",
+    "distance_scale": "ตัวหารปรับสเกลคะแนนระยะสีใน foreground_score",
+    "fixed_threshold": "ระบุ Threshold คงที่โดยตรง (ข้ามขั้นตอนจูนจาก Validation)",
 }
 
 

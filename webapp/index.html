@@ -15,10 +15,10 @@
   <header class="navbar">
     <div class="nav-container">
       <div class="brand">
-        <span class="brand-icon">🐾</span>
+        <span class="brand-icon">🍎</span>
         <div>
           <h1 class="brand-title">Segmentation Workshop Explorer</h1>
-          <p class="brand-sub">Oxford-IIIT Pet Dataset • Interactive Educational Guide</p>
+          <p class="brand-sub">Red Apples Single-Color Dataset (Fruits-360) • Interactive Educational Guide</p>
         </div>
       </div>
       <nav class="nav-links">
@@ -26,6 +26,7 @@
         <a href="#roc-section" class="nav-link">ROC Curve & Dots</a>
         <a href="#pixel-section" class="nav-link">Pixel 0–255 & Colors</a>
         <a href="#metrics-section" class="nav-link">สูตรคำนวณ Metrics</a>
+        <a href="#gallery-section" class="nav-link">ภาพตัวอย่าง & กราฟจริง</a>
       </nav>
       <div class="theme-badge">Interactive Mode</div>
     </div>
@@ -35,13 +36,13 @@
     <!-- Hero Banner -->
     <section class="hero-banner">
       <div class="hero-content">
-        <h2>เจาะลึกการตัดแบ่งภาพสัตว์เลี้ยง (Image Segmentation)</h2>
-        <p>ทำความเข้าใจทุกตาราง ทุกเส้น ทุกจุดพิกัด และการคำนวณเบื้องหลัง Oxford-IIIT Pet Dataset ตั้งแต่ระดับ 0–255 ไปจนถึง Confusion Matrix และ ROC Curve</p>
+        <h2>เจาะลึกการตัดแบ่งภาพแอปเปิลสีแดงล้วน (Red Apples Segmentation)</h2>
+        <p>ทำความเข้าใจทุกตาราง ทุกเส้น ทุกจุดพิกัด และการคำนวณเบื้องหลัง Red Apple Dataset 5 สายพันธุ์บนพื้นผิวลายธรรมชาติ (ไม้โอ๊ก, สน, วอลนัต, หินอ่อน) พร้อมเงาทอดตกกระทบ (Cast Shadow) วิเคราะห์ผ่านช่องสี CIELAB a* (Redness Only) พร้อมเปรียบเทียบ ROC Curve 2 เส้น (Threshold vs Morphology)</p>
         <div class="badge-row">
-          <span class="badge blue">📊 50 ภาพทดสอบจริง</span>
-          <span class="badge purple">🎯 2,139,052 พิกเซลที่ประเมิน</span>
-          <span class="badge green">✨ ROC AUC = 0.744</span>
-          <span class="badge amber">⚙️ Threshold = 0.40</span>
+          <span class="badge blue">🍎 50 ภาพทดสอบแอปเปิลแดง 5 สายพันธุ์</span>
+          <span class="badge purple">🎯 2,381,327 พิกเซลที่ประเมิน</span>
+          <span class="badge green">✨ ROC AUC = 0.9605 (ทั้ง 2 เส้น)</span>
+          <span class="badge amber">⚙️ Threshold: ก่อน=0.11 / หลัง=0.05</span>
         </div>
       </div>
     </section>
@@ -51,7 +52,7 @@
       <div class="section-header">
         <div class="title-with-pill">
           <span class="pill">Section 1</span>
-          <h3>Confusion Matrix: TP, TN, FP, FN คืออะไรในภาพสัตว์เลี้ยง?</h3>
+          <h3>Confusion Matrix: TP, TN, FP, FN คืออะไรในภาพแอปเปิลแดงบนพื้นผิวธรรมชาติ?</h3>
         </div>
         <!-- Toggle Before vs After -->
         <div class="toggle-group" id="stage-toggle-group">
@@ -65,16 +66,16 @@
         <div class="matrix-container">
           <div class="axis-label-col">
             <span class="axis-title">Actual (ของจริง)</span>
-            <span class="axis-sub">Background (0)</span>
-            <span class="axis-sub">Pet (1)</span>
+            <span class="axis-sub">Surface/Shadow (0)</span>
+            <span class="axis-sub">Red Apple (1)</span>
           </div>
 
           <div class="matrix-grid-wrapper">
             <div class="axis-label-row">
               <span class="axis-title-x">Predicted Class (สิ่งที่โปรแกรมทาย)</span>
               <div class="axis-row-cols">
-                <span>Background (0)</span>
-                <span>Pet / Animal (1)</span>
+                <span>Surface/Shadow (0)</span>
+                <span>Red Apple Item (1)</span>
               </div>
             </div>
 
@@ -83,9 +84,9 @@
               <div class="matrix-cell tn-cell" id="cell-tn" onclick="selectCell('TN')">
                 <div class="cell-badge">TN</div>
                 <div class="cell-name">True Negative</div>
-                <div class="cell-value" id="val-tn">767,091</div>
+                <div class="cell-value" id="val-tn">1,722,896</div>
                 <div class="cell-unit">พิกเซล</div>
-                <div class="cell-desc">พื้นหลังจริง → ทายถูกว่าเป็นพื้นหลัง</div>
+                <div class="cell-desc">พื้นผิวโต๊ะจริง → ทายถูกว่าเป็นพื้นหลัง (ไม่มีสีแดง)</div>
                 <div class="cell-hint">คลิกเพื่อดูรายละเอียด 💡</div>
               </div>
 
@@ -93,9 +94,9 @@
               <div class="matrix-cell fp-cell" id="cell-fp" onclick="selectCell('FP')">
                 <div class="cell-badge">FP</div>
                 <div class="cell-name">False Positive</div>
-                <div class="cell-value" id="val-fp">656,811</div>
+                <div class="cell-value" id="val-fp">3,288</div>
                 <div class="cell-unit">พิกเซล</div>
-                <div class="cell-desc">พื้นหลังจริง → ทายผิดว่าเป็นสัตว์ (ขอบเกิน)</div>
+                <div class="cell-desc">พื้นผิวโต๊ะ/เงาที่มีสีแดงเรื่อ → ทายผิดเป็นแอปเปิล</div>
                 <div class="cell-hint">คลิกเพื่อดูรายละเอียด 💡</div>
               </div>
 
@@ -103,9 +104,9 @@
               <div class="matrix-cell fn-cell" id="cell-fn" onclick="selectCell('FN')">
                 <div class="cell-badge">FN</div>
                 <div class="cell-name">False Negative</div>
-                <div class="cell-value" id="val-fn">150,671</div>
+                <div class="cell-value" id="val-fn">61,531</div>
                 <div class="cell-unit">พิกเซล</div>
-                <div class="cell-desc">สัตว์จริง → ทายผิดว่าเป็นพื้นหลัง (ตัวแหว่ง)</div>
+                <div class="cell-desc">เนื้อแอปเปิลจริง → ทายผิดเป็นพื้นหลัง (จุดสะท้อนแสง/ด่างเหลือง)</div>
                 <div class="cell-hint">คลิกเพื่อดูรายละเอียด 💡</div>
               </div>
 
@@ -113,9 +114,9 @@
               <div class="matrix-cell tp-cell" id="cell-tp" onclick="selectCell('TP')">
                 <div class="cell-badge">TP</div>
                 <div class="cell-name">True Positive</div>
-                <div class="cell-value" id="val-tp">564,479</div>
+                <div class="cell-value" id="val-tp">593,612</div>
                 <div class="cell-unit">พิกเซล</div>
-                <div class="cell-desc">สัตว์จริง → ทายถูกว่าเป็นสัตว์ (จับตัวได้)</div>
+                <div class="cell-desc">เนื้อแอปเปิลจริง → ทายถูกว่าเป็นแอปเปิล (จับสีแดงสำเร็จ)</div>
                 <div class="cell-hint">คลิกเพื่อดูรายละเอียด 💡</div>
               </div>
             </div>
@@ -128,23 +129,23 @@
             <span class="detail-tag" id="detail-tag">TN: True Negative</span>
             <span class="detail-status success" id="detail-status">ทำนายถูกต้อง (Correct)</span>
           </div>
-          <h4 id="detail-title">พิกเซลพื้นหลัง ที่ทายถูกว่าเป็นพื้นหลัง</h4>
+          <h4 id="detail-title">พิกเซลพื้นผิว (โต๊ะไม้/หิน) ที่ไม่มีสีแดง ทายถูกว่าเป็นพื้นหลัง</h4>
           <p id="detail-desc" class="detail-p">
-            พิกเซลเหล่านี้คือสนามหญ้า พรม โซฟา หรือฉากหลังที่ระบบระบุได้อย่างถูกต้องว่าเป็นพื้นหลัง (Mask มีค่าเป็นสีดำ 0)
+            พิกเซลเหล่านี้คือเนื้อไม้และเคาน์เตอร์หินอ่อนรอบผลแอปเปิล ซึ่งมีค่า a* ต่ำกว่าเกณฑ์ความแดง ระบบจึงระบาย Mask เป็นสีดำ (0) ได้อย่างถูกต้องแม่นยำ (กว่า 1.72 ล้านพิกเซล)
           </p>
           <div class="visual-explanation" id="detail-visual">
             <div class="vis-box vis-black">
-              <span>Ground Truth: ดำ (0)</span>
+              <span>Ground Truth: ดำ (0/พื้นผิว)</span>
             </div>
             <span class="vis-arrow">➔</span>
             <div class="vis-box vis-black">
-              <span>Predicted: ดำ (0)</span>
+              <span>Predicted: ดำ (0/พื้นผิว)</span>
             </div>
             <span class="vis-result ok">✅ แม่นยำ</span>
           </div>
           <div class="detail-impact">
             <strong>ผลกระทบต่อตัวชี้วัด:</strong>
-            <span id="detail-impact-text">ช่วยเพิ่มค่า Accuracy ให้สูงขึ้นอย่างมาก เพราะพื้นหลังมีจำนวนพื้นที่ส่วนใหญ่ของภาพ</span>
+            <span id="detail-impact-text">สัดส่วนพื้นผิวโต๊ะมีขนาดใหญ่มาก การที่ระบบระบุ TN ได้อย่างแม่นยำสูงถึง 1.72 ล้านพิกเซล ทำให้ค่า Accuracy รวมอยู่ที่ระดับ 97.28%</span>
           </div>
         </div>
       </div>
@@ -155,7 +156,7 @@
       <div class="section-header">
         <div class="title-with-pill">
           <span class="pill">Section 2</span>
-          <h3>ROC Curve: เส้นโค้ง และ "จุดกลม (Dot)" หมายถึงอะไร?</h3>
+          <h3>ROC Curve: ทำไมมี 2 เส้น (Threshold vs Morphology), 2 จุด Best Dots และจุดทุก 0.02 FPR?</h3>
         </div>
       </div>
 
@@ -163,11 +164,13 @@
         <!-- Interactive SVG ROC Curve -->
         <div class="roc-plot-card">
           <div class="plot-topbar">
-            <span>Test Pixels: ROC Curve (AUC = 0.744)</span>
+            <span>Test Pixels: Dual ROC Curves (AUC = 0.9605)</span>
             <div class="plot-legend">
-              <span class="leg-item"><span class="leg-line blue-line"></span> เส้นความต่างสี (Continuous)</span>
-              <span class="leg-item"><span class="leg-dot orange-dot"></span> จุด Before</span>
-              <span class="leg-item"><span class="leg-dot green-dot"></span> จุด After</span>
+              <span class="leg-item"><span class="leg-line blue-line"></span> Line 1: Threshold (Raw a*)</span>
+              <span class="leg-item"><span class="leg-line green-line"></span> Line 2: Morphology (Post-Proc)</span>
+              <span class="leg-item"><span class="leg-dot orange-dot"></span> Best Threshold (t=0.11)</span>
+              <span class="leg-item"><span class="leg-dot red-dot"></span> Best Morphology (t=0.05)</span>
+              <span class="leg-item"><span class="leg-dot sub-dot-sample"></span> ทุกๆ 0.02 FPR (51 จุด)</span>
             </div>
           </div>
 
@@ -190,26 +193,34 @@
               <!-- Diagonal Random Guess Line -->
               <line x1="50" y1="360" x2="470" y2="40" class="random-line" stroke-dasharray="6,6" />
 
-              <!-- Smooth ROC Curve -->
-              <path id="roc-path" d="M 50 360 C 70 240, 150 140, 243 107 C 330 76, 400 48, 470 40" class="curve-path" />
+              <!-- Line 1: Threshold ROC Curve -->
+              <path id="roc-path-line1" class="curve-path-line1" />
 
-              <!-- Before Dot -->
+              <!-- Line 2: Morphology ROC Curve -->
+              <path id="roc-path-line2" class="curve-path-line2" />
+
+              <!-- Sub-dots every 0.02 FPR container -->
+              <g id="dots-line1-group"></g>
+              <g id="dots-line2-group"></g>
+
+              <!-- Best Dot Line 1 (Threshold t=0.11: FPR=0.0019, TPR=0.9061 -> cx=50.8, cy=70.0) -->
               <g id="dot-before-group" class="svg-point" onclick="highlightPoint('before')">
-                <circle cx="243.6" cy="107.4" r="8" class="svg-dot dot-before" />
-                <circle cx="243.6" cy="107.4" r="14" class="svg-dot-pulse pulse-before" />
-                <text x="255" y="112" class="svg-label">Before (0.40)</text>
+                <circle cx="50.8" cy="70.0" r="7" class="svg-dot dot-before" />
+                <circle cx="50.8" cy="70.0" r="14" class="svg-dot-pulse pulse-before" />
+                <text x="68" y="74" class="svg-label">Best Threshold (t=0.11)</text>
               </g>
 
-              <!-- After Dot -->
+              <!-- Best Dot Line 2 (Morphology t=0.05: FPR=0.0060, TPR=0.9168 -> cx=52.5, cy=66.6) -->
               <g id="dot-after-group" class="svg-point" onclick="highlightPoint('after')">
-                <circle cx="230.1" cy="109.5" r="8" class="svg-dot dot-after" />
-                <circle cx="230.1" cy="109.5" r="14" class="svg-dot-pulse pulse-after" />
-                <text x="145" y="100" class="svg-label">After (Morphology)</text>
+                <circle cx="52.5" cy="66.6" r="7" class="svg-dot dot-after" />
+                <circle cx="52.5" cy="66.6" r="14" class="svg-dot-pulse pulse-after" />
+                <text x="68" y="54" class="svg-label">Best Morphology (t=0.05)</text>
               </g>
 
-              <!-- Dynamic Interactive Threshold Marker on Curve -->
-              <g id="dynamic-marker-group">
-                <circle id="dynamic-marker" cx="243.6" cy="107.4" r="6" class="dynamic-dot" />
+              <!-- Dynamic Interactive Threshold Markers on Both Curves -->
+              <g id="dynamic-markers-group">
+                <circle id="dynamic-marker-l1" cx="50.8" cy="70.0" r="5" class="dynamic-dot-line1" />
+                <circle id="dynamic-marker-l2" cx="52.5" cy="66.6" r="5" class="dynamic-dot-line2" />
               </g>
 
               <!-- Axes Text -->
@@ -233,45 +244,47 @@
           <!-- Slider Simulator -->
           <div class="slider-box">
             <div class="slider-header">
-              <span>🕹️ จำลองเลื่อนค่า Threshold บนเส้นโค้ง:</span>
-              <strong id="slider-threshold-val">0.40</strong>
+              <span>🕹️ จำลองเลื่อนค่า Threshold บนเส้นทั้งสอง:</span>
+              <strong id="slider-threshold-val">0.11</strong>
             </div>
-            <input type="range" id="threshold-slider" min="0.10" max="0.90" step="0.05" value="0.40" oninput="updateRocSlider(this.value)">
+            <input type="range" id="threshold-slider" min="0.02" max="0.50" step="0.01" value="0.11" oninput="updateRocSlider(this.value)">
             <div class="slider-stats">
-              <span>Estimated FPR: <strong id="sim-fpr">0.461</strong></span>
-              <span>Estimated TPR (Recall): <strong id="sim-tpr">0.789</strong></span>
+              <span><span>Line 1 (Threshold):</span> <span>FPR = <strong id="sim-fpr-l1">0.002</strong> &nbsp;|&nbsp; TPR = <strong id="sim-tpr-l1">0.906</strong></span></span>
+              <span><span>Line 2 (Morphology):</span> <span>FPR = <strong id="sim-fpr-l2">0.006</strong> &nbsp;|&nbsp; TPR = <strong id="sim-tpr-l2">0.917</strong></span></span>
             </div>
           </div>
         </div>
 
-        <!-- Explanations: Why only ONE curve? -->
+        <!-- Explanations: 2 Lines, 2 Best Dots, 0.02 FPR Sampling -->
         <div class="roc-qa-card">
           <div class="qa-item highlight">
-            <h4>❓ ทำไมในกราฟ ROC ถึงมีเส้นโค้งแค่ "เส้นเดียว" ไม่ได้มีสองเส้น?</h4>
+            <h4>❓ ทำไมในกราฟ ROC ถึงมี 2 เส้น (Threshold vs Morphology)?</h4>
             <p>
-              <strong>เส้นโค้ง (Curve)</strong> จะเกิดขึ้นได้ก็ต่อเมื่อมี <em>"คะแนนความน่าจะเป็นต่อเนื่อง (0.0 ถึง 1.0)"</em> ซึ่งช่วยให้เราสามารถค่อยๆ เลื่อนค่า Threshold จาก 0 ถึง 1 แล้วคำนวณจุด (FPR, TPR) มาต่อกันจนเกิดเป็นเส้นโค้งได้
-            </p>
-            <p>
-              แต่กระบวนการ <strong>Morphology (After)</strong> กระทำบนภาพ <strong>Binary Mask ขาว-ดำ (มีแค่ 0 กับ 1 เท่านั้น)</strong> ไม่ได้ส่งคะแนนทศนิยมต่อเนื่องออกมา จึงไม่มีค่าตัวเลขให้เลื่อน Threshold อีกต่อไป ทำให้ผลลัพธ์ของ Morphology ปรากฏได้เป็นแค่ <strong>"จุดพิกัดเดี่ยวๆ (Operating Point)"</strong> จุดเดียวบนกราฟ ไม่สามารถสร้างเป็นเส้นโค้งที่สองได้ครับ
+              • <strong>เส้นที่ 1 (สีน้ำเงิน - Line 1: Threshold Only):</strong> เกิดจากการกวาดค่า Threshold บนคะแนนความแดงดิบ (CIELAB a*) ก่อนทำ Morphology ได้ค่า <strong>AUC = 0.9605</strong>
+              <br>• <strong>เส้นที่ 2 (สีเขียว - Line 2: Morphology Post-Processed):</strong> เกิดจากการนำผล Mask ของแต่ละ Threshold ไปผ่านกระบวนการ Morphological Opening (กำจัด Noise) และ Closing (อุดรูพรุน) แล้ววัดผล FPR และ TPR ในแต่ละระดับ Threshold จนลากเป็นเส้นโค้งที่สองได้ค่า <strong>AUC = 0.9605</strong> เช่นกัน
             </p>
           </div>
 
           <div class="qa-item">
-            <h4>🔵 เส้นทึบสีน้ำเงิน คืออะไร?</h4>
-            <p>คือ <strong>ROC Curve</strong> ของคะแนนความต่างสี (Color Distance Score) คำนวณจากทุกพิกเซล ยิ่งโค้งโป่งชิดมุมบนซ้ายมากเท่าไหร่ พื้นที่ใต้กราฟ (AUC) จะยิ่งเข้าใกล้ 1.0 แปลว่าระบบแยกแยะสีสัตว์ออกจากพื้นหลังได้ดีขึ้น</p>
-          </div>
-
-          <div class="qa-item">
-            <h4>⚪ เส้นประสีเทา คืออะไร?</h4>
-            <p>คือ <strong>เส้นเดาสุ่ม (Random Guess Baseline)</strong> เทียบเท่ากับการโยนเหรียญเดา (AUC = 0.50) เส้นสีน้ำเงินที่โป่งขึ้นเหนือเส้นประนี้ พิสูจน์ว่าระบบสีมีประสิทธิภาพดีกว่าการสุ่มเดาอย่างมีนัยสำคัญ</p>
-          </div>
-
-          <div class="qa-item">
-            <h4>🟠 จุด Before กับ 🟢 จุด After คืออะไร?</h4>
+            <h4>🎯 จุดกลม 2 จุด (Best Operating Dots) บนแต่ละเส้นคืออะไร?</h4>
             <p>
-              คือ <strong>จุดทำงานจริง (Operating Points)</strong> ณ สถานะที่เราตัดสินใจใช้งาน:
-              <br>• <strong>Before:</strong> ตัด Threshold = 0.40 ตรงๆ (FPR=0.461, TPR=0.789)
-              <br>• <strong>After:</strong> นำไปขัดเกลาด้วย Morphology (FPR=0.429, TPR=0.783) จะเห็นว่าจุดขยับมา <strong>ทางซ้าย</strong> แปลว่า <em>ลดอัตราการทายพื้นหลังผิดลงได้สำเร็จ!</em>
+              คือ <strong>จุดทำงานที่ดีที่สุด (Best Operating Points)</strong> ที่ให้ค่า IoU สูงสุดบนแต่ละเส้น:
+              <br>• <strong>จุดสีส้ม (บน Line 1):</strong> จุดที่ดีที่สุดก่อนทำ Morphology ณ <strong>t = 0.11</strong> ได้ <strong>FPR = 0.0019</strong>, <strong>TPR = 0.9061</strong>, <strong>IoU = 0.9016</strong>
+              <br>• <strong>จุดสีแดง (บน Line 2):</strong> จุดที่ดีที่สุดหลังทำ Morphology ณ <strong>t = 0.05</strong> ได้ <strong>FPR = 0.0060</strong>, <strong>TPR = 0.9168</strong>, <strong>IoU = 0.9026</strong> ซึ่งช่วยกู้คืนพิกเซลแอปเปิล (TP) เพิ่มขึ้นถึง <strong>7,040 พิกเซล!</strong>
+            </p>
+          </div>
+
+          <div class="qa-item">
+            <h4>⚪ จุดกลมย่อยตามเส้นทุกๆ 0.02 FPR คืออะไร?</h4>
+            <p>
+              คือ <strong>Sampled Dots ทุกช่วง 0.02 FPR</strong> รวม 51 จุดต่อเส้น (0.00, 0.02, 0.04, ..., 1.00) เพื่อให้ผู้ศึกษาเห็นอัตราการเติบโตของ TPR เมื่อยอมให้เกิด False Alarm เพิ่มขึ้นทีละ 2% ได้อย่างชัดเจน นำเมาส์ไปชี้ (Hover) ที่จุดเพื่อดูพิกัดตัวเลขจริงได้
+            </p>
+          </div>
+
+          <div class="qa-item">
+            <h4>⚖️ เส้นประสีเทา คืออะไร?</h4>
+            <p>
+              คือ <strong>เส้นเดาสุ่ม (Random Guess Baseline, AUC = 0.50)</strong> เทียบเท่ากับการเดาสุ่มเหรียญหัว-ก้อย ทั้งสองเส้นโค้งแนบชิดมุมซ้ายบนอย่างชัดเจน สะท้อนว่าอัลกอริทึมแยกแยะแอปเปิลสีแดงออกจากพื้นผิวและเงาได้อย่างแม่นยำสูงยิ่ง
             </p>
           </div>
         </div>
@@ -283,7 +296,7 @@
       <div class="section-header">
         <div class="title-with-pill">
           <span class="pill">Section 3</span>
-          <h3>ระดับความสว่าง 0–255 และบทบาทในโปรเจกต์นี้</h3>
+          <h3>ระดับความสว่าง 0–255 และการใช้แกนสี CIELAB a* (Red Only)</h3>
         </div>
       </div>
 
@@ -307,47 +320,47 @@
             <div class="bench-item" onclick="setGrayPreset(0)">
               <div class="bench-swatch black-swatch"></div>
               <strong>0 (Pure Black)</strong>
-              <span>Background (พื้นหลัง)</span>
+              <span>Background (พื้นหลังโต๊ะ)</span>
             </div>
             <div class="bench-item" onclick="setGrayPreset(128)">
               <div class="bench-swatch gray-swatch"></div>
               <strong>128 (Mid Gray)</strong>
-              <span>Trimap 3 (ขอบที่ไม่แน่นอน)</span>
+              <span>Trimap ขอบกำกวม (ไม่ประเมิน)</span>
             </div>
             <div class="bench-item" onclick="setGrayPreset(255)">
               <div class="bench-swatch white-swatch"></div>
               <strong>255 (Pure White)</strong>
-              <span>Pet Foreground (ตัวสัตว์)</span>
+              <span>Apple Foreground (แอปเปิลแดง)</span>
             </div>
           </div>
         </div>
 
-        <!-- Color Distance & CIELAB Explanation -->
+        <!-- Color Distance & CIELAB a* Only Explanation -->
         <div class="cielab-box">
-          <h4>🧪 ทำไมโปรเจกต์ถึงใช้ระบบสี CIELAB แทน RGB ธรรมดา?</h4>
+          <h4>🧪 ทำไมโปรเจกต์นี้ถึงใช้เฉพาะแกน a* ของ CIELAB ในการตรวจจับสีแดง?</h4>
           <p>
-            ในระบบ RGB ระยะห่างของตัวเลขไม่ได้สอดคล้องกับความรู้สึกของตามนุษย์ (เช่น แสงไฟเปลี่ยนเพียงนิดเดียว ค่า RGB จะกระโดดไปไกลมาก)
+            เนื่องจากโจทย์กำหนดให้แอปเปิลเป็น <strong>สีแดงเพียงสีเดียว (Single Red Color)</strong> ระบบสี CIELAB จึงถูกนำมาใช้โดยมุ่งเน้นที่แกน a* โดยตรง:
           </p>
           <div class="lab-pill-grid">
-            <div class="lab-pill">
+            <div class="lab-pill opacity-muted">
               <strong>L* (Lightness)</strong>
-              <span>ความสว่าง (0 = มืดสุด, 100 = ขาวสุด)</span>
+              <span>ตัดทิ้ง: ไม่นำมาคิด เพื่อไม่ให้เงาทอดตกกระทบ (Cast Shadow) และแสงสะท้อนรบกวน</span>
             </div>
-            <div class="lab-pill">
-              <strong>a* (Green ➔ Red)</strong>
-              <span>แกนเฉดสีเขียวถึงสีแดง</span>
+            <div class="lab-pill active-channel">
+              <strong>a* (Green ➔ Red) ⭐</strong>
+              <span>ใช้งาน 100%: ตรวจจับเฉพาะ "ความแดง" ที่เหนือกว่าฉากหลัง (a* > a_bg)</span>
             </div>
-            <div class="lab-pill">
+            <div class="lab-pill opacity-muted">
               <strong>b* (Blue ➔ Yellow)</strong>
-              <span>แกนเฉดสีน้ำเงินถึงสีเหลือง</span>
+              <span>ตัดทิ้ง: ไม่นำมาคิด เพื่อป้องกันความสับสนกับสีเหลืองของเนื้อไม้โต๊ะ</span>
             </div>
           </div>
           <div class="formula-box">
-            <code>distance = √[(L - L_bg)² + (a - a_bg)² + (b - b_bg)²]</code>
-            <code>score = distance / (distance + 50.0)</code>
+            <code>diff_a = max(0, a_channel - bg_a)</code>
+            <code>score = diff_a / (diff_a + 20.0)</code>
           </div>
           <p class="formula-note">
-            💡 <strong>ยิ่งสีต่างจากขอบภาพมาก:</strong> ค่า distance จะสูง $\rightarrow$ score เข้าใกล้ 1.0 $\rightarrow$ เมื่อ $\text{score} \ge 0.40$ ระบบจะเปลี่ยนพิกเซลนั้นเป็น <strong>255 (ขาว/สัตว์)</strong> ทันที
+            💡 <strong>ยิ่งมีเฉดสีแดงสูงกว่าพื้นหลังมาก:</strong> ค่า diff_a จะสูง ➔ score พุ่งเข้าใกล้ 1.0 ➔ เมื่อคะแนนผ่านเกณฑ์ Threshold ระบบจะระบายพิกเซลเป็น <strong>255 (ขาว/แอปเปิล)</strong>
           </p>
         </div>
       </div>
@@ -367,41 +380,41 @@
         <div class="metric-card">
           <div class="metric-top">
             <span class="metric-name">Accuracy (ความแม่นยำรวม)</span>
-            <span class="metric-score" id="m-acc">62.25%</span>
+            <span class="metric-score" id="m-acc">97.28%</span>
           </div>
           <div class="metric-formula">
             <code>(TP + TN) / (TP + TN + FP + FN)</code>
           </div>
           <p class="metric-explanation">
-            สัดส่วนพิกเซลที่ทำนายถูกทั้งหมด ไม่ว่าจะทายถูกว่าเป็นสัตว์หรือทายถูกว่าเป็นพื้นหลัง
+            สัดส่วนพิกเซลที่ทำนายถูกทั้งหมด ไม่ว่าจะทายถูกว่าเป็นผลแอปเปิลหรือทายถูกว่าเป็นพื้นผิวโต๊ะ
           </p>
         </div>
 
         <!-- Precision -->
         <div class="metric-card">
           <div class="metric-top">
-            <span class="metric-name">Precision (ความแม่นยำเมื่อทายสัตว์)</span>
-            <span class="metric-score" id="m-prec">46.22%</span>
+            <span class="metric-name">Precision (ความแม่นยำเมื่อทายแอปเปิล)</span>
+            <span class="metric-score" id="m-prec">99.45%</span>
           </div>
           <div class="metric-formula">
             <code>TP / (TP + FP)</code>
           </div>
           <p class="metric-explanation">
-            ในบรรดาพิกเซลทั้งหมดที่โปรแกรมบอกว่าเป็นสัตว์ มีสัตว์อยู่จริงๆ กี่เปอร์เซ็นต์
+            ในบรรดาพิกเซลทั้งหมดที่โปรแกรมบอกว่าเป็นแอปเปิล มีเนื้อแอปเปิลอยู่จริงๆ กี่เปอร์เซ็นต์ (ก่อนทำ 99.45% / หลังทำ 98.31%)
           </p>
         </div>
 
         <!-- Recall -->
         <div class="metric-card">
           <div class="metric-top">
-            <span class="metric-name">Recall (ความไว / ความครอบคลุม)</span>
-            <span class="metric-score" id="m-rec">78.93%</span>
+            <span class="metric-name">Recall (ความครอบคลุมในการตรวจจับ)</span>
+            <span class="metric-score" id="m-rec">90.61%</span>
           </div>
           <div class="metric-formula">
             <code>TP / (TP + FN)</code>
           </div>
           <p class="metric-explanation">
-            ตัวสัตว์จริงทั้งหมดในภาพ โปรแกรมสามารถตรวจจับได้กี่เปอร์เซ็นต์
+            เนื้อผลแอปเปิลจริงทั้งหมดในภาพ โปรแกรมสามารถกวาดจับมาได้กี่เปอร์เซ็นต์ (ขยับเพิ่มขึ้นเป็น 91.68% หลังทำ Morphology)
           </p>
         </div>
 
@@ -409,13 +422,13 @@
         <div class="metric-card highlight-border">
           <div class="metric-top">
             <span class="metric-name">IoU (Intersection over Union)</span>
-            <span class="metric-score" id="m-iou">0.4114</span>
+            <span class="metric-score" id="m-iou">0.9016</span>
           </div>
           <div class="metric-formula">
             <code>TP / (TP + FP + FN)</code>
           </div>
           <p class="metric-explanation">
-            พื้นที่ทับซ้อนจริง หารด้วยพื้นที่รวมทั้งหมดของสัตว์จริงและส่วนที่ทำนาย (เป็นตัววัดมาตรฐานของ Segmentation)
+            พื้นที่ทับซ้อนจริง หารด้วยพื้นที่รวมทั้งหมดของแอปเปิลจริงและส่วนที่ทำนาย (ทะลุ 0.9026 หลังทำ Morphology)
           </p>
         </div>
 
@@ -423,21 +436,51 @@
         <div class="metric-card">
           <div class="metric-top">
             <span class="metric-name">Dice Coefficient (F1-Score)</span>
-            <span class="metric-score" id="m-dice">0.5830</span>
+            <span class="metric-score" id="m-dice">0.9482</span>
           </div>
           <div class="metric-formula">
             <code>2TP / (2TP + FP + FN)</code>
           </div>
           <p class="metric-explanation">
-            ค่าเฉลี่ยฮาร์โมนิกระหว่าง Precision และ Recall ให้ความสำคัญกับความทับซ้อนของตัวสัตว์
+            ค่าเฉลี่ยฮาร์โมนิกระหว่าง Precision และ Recall ให้ความสำคัญกับความสมบูรณ์ของรูปทรงวัตถุ (ได้สูงถึง 0.9488)
           </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: REAL ARTIFACTS & EXPERIMENT GALLERY -->
+    <section id="gallery-section" class="section-card">
+      <div class="section-header">
+        <div class="title-with-pill">
+          <span class="pill">Section 5</span>
+          <h3>กราฟและภาพผลลัพธ์จริงจากการรันไพพ์ไลน์ (Real Outputs)</h3>
+        </div>
+      </div>
+
+      <div class="gallery-grid">
+        <div class="gallery-item">
+          <h4>📊 Confusion Matrix (ระบุ TP, TN, FP, FN ชัดเจน)</h4>
+          <img src="assets/confusion_matrix.png" alt="Confusion Matrix" class="gallery-img">
+          <p class="gallery-caption">แสดงจำนวนพิกเซลจริงทั้ง 4 ช่อง (Before: TN 1.72M, FP 3,288, FN 61,531, TP 593,612; After: TN 1.71M, FP 10,345, FN 54,491, TP 600,652 กู้คืนเนื้อแอปเปิลเพิ่ม 7,040 พิกเซล)</p>
+        </div>
+
+        <div class="gallery-item">
+          <h4>📈 Dual ROC Curves & 2 Best Dots & 0.02 FPR Sampling (AUC = 0.9605)</h4>
+          <img src="assets/roc_curve.png" alt="ROC Curve" class="gallery-img">
+          <p class="gallery-caption">กราฟ ROC แสดง 2 เส้น (Line 1: Threshold สีน้ำเงิน AUC=0.9605, Line 2: Morphology สีเขียว AUC=0.9605) พร้อม 2 Best Dots และจุดตัวอย่างทุกๆ 0.02 FPR รวม 51 จุดต่อเส้น</p>
+        </div>
+
+        <div class="gallery-item full-width">
+          <h4>🍎 ภาพตัวอย่างการตัดแบ่งภาพจริง (apple_21 บนไม้โอ๊ก)</h4>
+          <img src="assets/apple_example.png" alt="Segmentation Pipeline Output" class="gallery-img">
+          <p class="gallery-caption">ภาพตัวอย่างแอปเปิลแดงบนโต๊ะไม้โอ๊กพร้อมเงาทอด: Input ➔ Ground Truth Trimap ➔ Before Mask ➔ After Morphology Mask ➔ Cutout</p>
         </div>
       </div>
     </section>
   </main>
 
   <footer class="footer">
-    <p>Segmentation Workshop Interactive Guide • Oxford-IIIT Pet Dataset • Developed for Computer Vision Education</p>
+    <p>Segmentation Workshop Interactive Guide • Fruits-360 Red Apples with Shadows Dataset • Developed for Computer Vision Education</p>
   </footer>
 
   <script src="app.js"></script>

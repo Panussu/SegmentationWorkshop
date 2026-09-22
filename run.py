@@ -27,7 +27,7 @@ import numpy as np
 # นำเข้า Image จาก Pillow สำหรับเปิดไฟล์ภาพและ Trimap
 from PIL import Image
 # นำเข้าฟังก์ชันสร้าง ROC curve และคำนวณ ROC AUC จาก scikit-learn
-from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import roc_curve, roc_auc_score, auc as sk_auc
 
 # นำเข้าฟังก์ชัน Segmentation และฟังก์ชันประเมินผลจากโมดูลภายในโครงการ
 from segmentation import foreground_score, clean_mask, confusion_counts, metrics
@@ -73,12 +73,12 @@ def parse_args():
     parser.add_argument("--data-dir", type=Path, default=DATA, help="พาธโฟลเดอร์ที่เก็บชุดข้อมูล")
     parser.add_argument("--output-dir", type=Path, default=OUT, help="พาธโฟลเดอร์ที่ใช้บันทึกผลลัพธ์")
     parser.add_argument("--max-image-side", type=int, default=256, help="ความยาวด้านที่ยาวที่สุดหลังย่อภาพ (พิกเซล)")
-    parser.add_argument("--threshold-min", type=float, default=0.10, help="ค่า Threshold ต่ำสุดในการค้นหา")
+    parser.add_argument("--threshold-min", type=float, default=0.03, help="ค่า Threshold ต่ำสุดในการค้นหา")
     parser.add_argument("--threshold-max", type=float, default=0.90, help="ค่า Threshold สูงสุดในการค้นหา")
-    parser.add_argument("--threshold-step", type=float, default=0.05, help="สเต็ปในการค้นหา Threshold")
+    parser.add_argument("--threshold-step", type=float, default=0.02, help="สเต็ปในการค้นหา Threshold")
     parser.add_argument("--fixed-threshold", type=float, default=None, help="ระบุ Threshold คงที่โดยตรง ข้ามขั้นตอนจูนบน Validation")
     parser.add_argument("--kernel-size", type=int, default=3, help="ขนาด Kernel สำหรับ Morphology ใน clean_mask (เลขคี่)")
-    parser.add_argument("--distance-scale", type=float, default=50.0, help="ตัวหารปรับสเกลคะแนนระยะสีใน foreground_score")
+    parser.add_argument("--distance-scale", type=float, default=20.0, help="ตัวหารปรับสเกลคะแนนระยะสีใน foreground_score (CIELAB a*)")
 
     if config_defaults:
         parser.set_defaults(**config_defaults)
@@ -117,7 +117,7 @@ def load_sample(name, data_dir=DATA, max_image_side=256):
     # ย่อ Trimap ด้วย Nearest-neighbor เพื่อไม่ให้เกิดค่า Label ใหม่
     trimap = cv2.resize(trimap, size, interpolation=cv2.INTER_NEAREST)
     # อธิบายความหมายของแต่ละ Label และการละเว้นบริเวณขอบที่ไม่แน่นอน
-    # 1=สัตว์, 2=พื้นหลัง, 3=บริเวณขอบที่ไม่แน่นอน (ไม่นำมาคิดคะแนน)
+    # 1=แอปเปิลแดง, 2=พื้นหลังและเงา, 3=บริเวณขอบที่ไม่แน่นอน (ไม่นำมาคิดคะแนน)
     # คืนภาพ RGB, Mask วัตถุ และ Mask ระบุพิกเซลที่ใช้ประเมินผล
     return rgb, trimap == 1, trimap != 3
 
@@ -125,10 +125,10 @@ def load_sample(name, data_dir=DATA, max_image_side=256):
 # =============================================================================
 # ส่วนที่ 4: การค้นหา Threshold ที่เหมาะสมจากชุด Validation
 # =============================================================================
-# ประกาศฟังก์ชันสำหรับเลือก Threshold จากชุด Validation
-def choose_threshold(names, data_dir=DATA, max_image_side=256, threshold_min=0.10, threshold_max=0.90, threshold_step=0.05, distance_scale=50.0):
-    # อธิบายว่าฟังก์ชันเลือก Threshold ด้วยค่าเฉลี่ย IoU ก่อนทำ Morphology
-    """เลือก threshold จาก validation เท่านั้น โดยใช้ mean IoU ก่อน Morphology."""
+# ประกาศฟังก์ชันสำหรับเลือก Threshold จากชุด Validation (ทั้งก่อนและหลังทำ Morphology)
+def choose_threshold(names, data_dir=DATA, max_image_side=256, threshold_min=0.10, threshold_max=0.90, threshold_step=0.02, distance_scale=20.0, kernel_size=3):
+    # อธิบายว่าฟังก์ชันเลือก Threshold ด้วยค่าเฉลี่ย IoU บนชุด Validation
+    """เลือก threshold ที่ดีที่สุดสำหรับ Before และ After Morphology จากชุด Validation."""
     # สร้าง List ว่างสำหรับเก็บคะแนน Ground truth และ Valid mask ของทุกภาพ
     samples = []
     # วนอ่านภาพ Validation แต่ละชื่อ
@@ -142,12 +142,18 @@ def choose_threshold(names, data_dir=DATA, max_image_side=256, threshold_min=0.1
     # วน Threshold ตามช่วงและสเต็ปที่กำหนด
     steps = np.arange(threshold_min, threshold_max + threshold_step / 2.0, threshold_step)
     for threshold in steps:
-        # คำนวณ IoU ของทุกภาพด้วย Threshold ปัจจุบัน โดยใช้เฉพาะพิกเซลที่ Valid
-        scores = [metrics(confusion_counts(truth[valid], (score >= threshold)[valid]))["iou"] for score, truth, valid in samples]
-        # เก็บค่า Threshold ที่ปัดเป็นสองตำแหน่งและค่าเฉลี่ย IoU ของทุกภาพ
-        candidates.append({"threshold": round(float(threshold), 2), "mean_iou": float(np.mean(scores))})
-    # เลือก Threshold ที่มี Mean IoU สูงสุดและคืนผลการค้นหาทั้งหมดด้วย
-    return max(candidates, key=lambda item: item["mean_iou"])["threshold"], candidates
+        # คำนวณ IoU ก่อน Morphology
+        scores_before = [metrics(confusion_counts(truth[valid], (score >= threshold)[valid]))["iou"] for score, truth, valid in samples]
+        # คำนวณ IoU หลัง Morphology
+        scores_after = [metrics(confusion_counts(truth[valid], clean_mask((score >= threshold), kernel_size=kernel_size)[valid]))["iou"] for score, truth, valid in samples]
+        candidates.append({
+            "threshold": round(float(threshold), 2),
+            "mean_iou_before": float(np.mean(scores_before)),
+            "mean_iou_after": float(np.mean(scores_after))
+        })
+    best_before = max(candidates, key=lambda item: item["mean_iou_before"])["threshold"]
+    best_after = max(candidates, key=lambda item: item["mean_iou_after"])["threshold"]
+    return best_before, best_after, candidates
 
 
 # =============================================================================
@@ -211,12 +217,13 @@ def main(args=None):
 
     # เลือก Threshold ตามค่าคงที่หรือจากการจูนบนชุด Validation
     if args.fixed_threshold is not None:
-        threshold = float(args.fixed_threshold)
-        tuning = [{"threshold": threshold, "mean_iou": None}]
-        print(f"Using fixed threshold: {threshold}", flush=True)
+        threshold_before = float(args.fixed_threshold)
+        threshold_after = float(args.fixed_threshold)
+        tuning = [{"threshold": threshold_before, "mean_iou_before": None, "mean_iou_after": None}]
+        print(f"Using fixed threshold: {threshold_before}", flush=True)
     else:
-        # เลือก Threshold ที่ดีที่สุดจากชุด Validation และเก็บผลค้นหาทุกค่า
-        threshold, tuning = choose_threshold(
+        # เลือก Threshold ที่ดีที่สุดจากชุด Validation ทั้งสำหรับ Before และ After Morphology
+        threshold_before, threshold_after, tuning = choose_threshold(
             split["validation"],
             data_dir=data_dir,
             max_image_side=args.max_image_side,
@@ -224,80 +231,112 @@ def main(args=None):
             threshold_max=args.threshold_max,
             threshold_step=args.threshold_step,
             distance_scale=args.distance_scale,
+            kernel_size=args.kernel_size,
         )
-        # แสดง Threshold ที่เลือกและบังคับให้ข้อความแสดงทันที
-        print(f"Validation selected threshold: {threshold}", flush=True)
+        print(f"Validation selected thresholds -> Before: {threshold_before}, After: {threshold_after}", flush=True)
 
     # -------------------------------------------------------------------------
     # ส่วนที่ 6.1: การประเมินภาพ Test ก่อนและหลังทำ Morphology
     # -------------------------------------------------------------------------
-    # สร้างยอดรวม Confusion matrix แยกก่อนและหลังทำ Morphology
     totals = {stage: dict(TN=0, FP=0, FN=0, TP=0) for stage in ("before", "after")}
-    # สร้าง List สำหรับผลรายภาพ Ground truth รวม และคะแนนรวมตามลำดับ
     rows, all_truth, all_scores = [], [], []
-    # วนทดสอบภาพทุกชื่อพร้อมเลขลำดับของภาพ
+    test_samples = []
+
     for index, name in enumerate(split["test"]):
-        # โหลดภาพ Ground truth และบริเวณที่ใช้ประเมินของภาพปัจจุบัน
         rgb, truth, valid = load_sample(name, data_dir=data_dir, max_image_side=args.max_image_side)
-        # คำนวณคะแนนความเป็นวัตถุของทุกพิกเซล
         score = foreground_score(rgb, distance_scale=args.distance_scale)
-        # เปรียบเทียบคะแนนกับ Threshold เพื่อสร้าง Binary mask ก่อน Morphology
-        raw = score >= threshold
-        # ทำ Opening และ Closing เพื่อสร้าง Binary mask หลัง Morphology
-        cleaned = clean_mask(raw, kernel_size=args.kernel_size)
-        # วนประเมินผลทั้ง Mask ก่อนและหลังทำ Morphology
+        test_samples.append((rgb, truth, valid, score))
+
+        # Binary mask ก่อนและหลังทำ Morphology โดยใช้ Threshold ที่เหมาะสมของแต่ละขั้นตอน
+        raw = score >= threshold_before
+        cleaned = clean_mask(score >= threshold_after, kernel_size=args.kernel_size)
+
         for stage, prediction in [("before", raw), ("after", cleaned)]:
-            # นับ TN, FP, FN และ TP จากพิกเซลที่ Valid เท่านั้น
             counts = confusion_counts(truth[valid], prediction[valid])
-            # วนค่าทุกช่องของ Confusion matrix ในภาพปัจจุบัน
             for key, count in counts.items():
-                # บวกจำนวนพิกเซลเข้ากับยอดรวมของขั้นตอนปัจจุบัน
                 totals[stage][key] += count
-            # เก็บชื่อภาพ ขั้นตอน จำนวน Confusion matrix และ Metrics ลงผลรายภาพ
             rows.append({"image": name, "stage": stage, **counts, **metrics(counts)})
-        # เก็บ Ground truth ของพิกเซลที่ Valid สำหรับคำนวณ ROC รวม
+
         all_truth.append(truth[valid])
-        # เก็บคะแนนของพิกเซลที่ Valid สำหรับคำนวณ ROC รวม
         all_scores.append(score[valid])
-        # อธิบายว่าบันทึกตัวอย่างทุกภาพโดยไม่คัดเลือกเฉพาะภาพที่ให้ผลดี
-        # เก็บตัวอย่างทุกภาพ ไม่เลือกเฉพาะภาพที่ผลดี
-        # บันทึกภาพเปรียบเทียบของตัวอย่างปัจจุบัน
         save_example(name, rgb, truth, valid, raw, cleaned, output_dir=out_dir)
-        # แสดงความคืบหน้าพร้อมลำดับและชื่อภาพที่ประเมินเสร็จ
         print(f"Evaluated {index + 1}/{len(split['test'])}: {name}", flush=True)
 
     # -------------------------------------------------------------------------
-    # ส่วนที่ 6.2: การคำนวณ ROC AUC และสร้างข้อมูลสรุป
+    # ส่วนที่ 6.2: การคำนวณ ROC Curves (Line 1: Threshold vs Line 2: Morphology)
     # -------------------------------------------------------------------------
-    # รวม Ground truth และคะแนนของทุกภาพเป็นอาร์เรย์หนึ่งมิติขนาดใหญ่
     y_true, y_score = np.concatenate(all_truth), np.concatenate(all_scores)
-    # คำนวณ False positive rate และ True positive rate ของ ROC curve
-    fpr, tpr, _ = roc_curve(y_true, y_score)
-    # คำนวณพื้นที่ใต้ ROC curve แล้วแปลงเป็น float มาตรฐาน
-    auc = float(roc_auc_score(y_true, y_score))
-    # เริ่มสร้าง Dictionary สรุปข้อมูลการทดลองและผลประเมิน
+
+    # Line 1: Threshold ROC Curve (คะแนนดิบต่อเนื่องจากช่อง a*)
+    fpr_thresh, tpr_thresh, _ = roc_curve(y_true, y_score)
+    auc_thresh = float(roc_auc_score(y_true, y_score))
+
+    # Line 2: Morphology Pipeline ROC Curve (กวาด 99 Thresholds พร้อมรัน clean_mask)
+    morph_sweep_thresholds = np.linspace(0.01, 0.99, 99)
+    morph_pts = []
+    for t in morph_sweep_thresholds:
+        t_fp, t_tn, t_tp, t_fn = 0, 0, 0, 0
+        for _, truth_img, valid_img, score_img in test_samples:
+            cl_m = clean_mask(score_img >= t, kernel_size=args.kernel_size)
+            v_truth = truth_img[valid_img]
+            v_pred = cl_m[valid_img]
+            t_tp += int(np.sum(v_truth & v_pred))
+            t_tn += int(np.sum(~v_truth & ~v_pred))
+            t_fp += int(np.sum(~v_truth & v_pred))
+            t_fn += int(np.sum(v_truth & ~v_pred))
+        fpr_v = t_fp / (t_fp + t_tn) if (t_fp + t_tn) > 0 else 0.0
+        tpr_v = t_tp / (t_tp + t_fn) if (t_tp + t_fn) > 0 else 0.0
+        morph_pts.append((fpr_v, tpr_v, float(t)))
+
+    all_morph_pts = [(0.0, 0.0, 1.0)] + morph_pts + [(1.0, 1.0, 0.0)]
+    all_morph_pts.sort(key=lambda x: (x[0], x[1]))
+    fpr_morph = np.array([p[0] for p in all_morph_pts])
+    tpr_morph = np.array([p[1] for p in all_morph_pts])
+    auc_morph = float(sk_auc(fpr_morph, tpr_morph))
+
+    # จุดตัวอย่างบนเส้นทั้งสองเส้นทุกๆ 0.02 FPR (0.00, 0.02, 0.04, ..., 1.00)
+    target_fprs = np.arange(0.00, 1.01, 0.02)
+    dots_thresh_tpr = np.interp(target_fprs, fpr_thresh, tpr_thresh)
+    dots_morph_tpr = np.interp(target_fprs, fpr_morph, tpr_morph)
+
+    # 2 Best Operating Dots
+    fpr_best_thresh = totals["before"]["FP"] / (totals["before"]["FP"] + totals["before"]["TN"])
+    tpr_best_thresh = totals["before"]["TP"] / (totals["before"]["TP"] + totals["before"]["FN"])
+
+    fpr_best_morph = totals["after"]["FP"] / (totals["after"]["FP"] + totals["after"]["TN"])
+    tpr_best_morph = totals["after"]["TP"] / (totals["after"]["TP"] + totals["after"]["FN"])
+
     summary = {
-        # บันทึกจำนวนภาพในชุด Validation
         "validation_images": len(split["validation"]),
-        # บันทึกจำนวนภาพในชุด Test
         "test_images": len(split["test"]),
-        # บันทึก Threshold ที่เลือกจากชุด Validation
-        "threshold": threshold,
-        # บันทึกขนาดด้านยาวสูงสุดที่ใช้ย่อภาพ
+        "threshold_before": threshold_before,
+        "threshold_after": threshold_after,
         "max_image_side": args.max_image_side,
-        # บันทึกขนาด Kernel ของ Morphology
         "kernel_size": args.kernel_size,
-        # บันทึกตัวหารปรับสเกลระยะห่างสี
         "distance_scale": args.distance_scale,
-        # บันทึก Label ของ Trimap ที่ไม่ถูกนำมาประเมิน
         "ignored_trimap_label": 3,
-        # บันทึกจำนวนพิกเซลที่ถูกนำมาประเมินทั้งหมด
         "evaluated_pixels": int(y_true.size),
-        # บันทึกค่า ROC AUC ของคะแนนต่อเนื่อง
-        "score_roc_auc": auc,
-        # เพิ่มจำนวน Confusion matrix และ Metrics แยกตามขั้นตอนก่อนและหลัง Morphology
+        "auc_threshold_line": auc_thresh,
+        "auc_morphology_line": auc_morph,
+        "best_dot_threshold": {
+            "threshold": threshold_before,
+            "fpr": float(fpr_best_thresh),
+            "tpr": float(tpr_best_thresh)
+        },
+        "best_dot_morphology": {
+            "threshold": threshold_after,
+            "fpr": float(fpr_best_morph),
+            "tpr": float(tpr_best_morph)
+        },
+        "line1_dots_every_002_fpr": [
+            {"fpr": round(float(f), 3), "tpr": round(float(t), 4)}
+            for f, t in zip(target_fprs, dots_thresh_tpr)
+        ],
+        "line2_dots_every_002_fpr": [
+            {"fpr": round(float(f), 3), "tpr": round(float(t), 4)}
+            for f, t in zip(target_fprs, dots_morph_tpr)
+        ],
         **{stage: {**counts, **metrics(counts)} for stage, counts in totals.items()},
-    # ปิด Dictionary สรุปผลการทดลอง
     }
     if args.fixed_threshold is not None:
         summary["fixed_threshold"] = args.fixed_threshold
@@ -305,123 +344,96 @@ def main(args=None):
     # -------------------------------------------------------------------------
     # ส่วนที่ 6.3: การบันทึกผลลัพธ์เป็น JSON และ CSV
     # -------------------------------------------------------------------------
-    # วนชื่อไฟล์และข้อมูลสำหรับผลลัพธ์ JSON ทั้งสามไฟล์
     for filename, content in [("summary.json", summary), ("threshold_search.json", tuning), ("split.json", split)]:
-        # แปลงข้อมูลเป็น JSON แบบเยื้องแล้วบันทึกด้วย UTF-8
         write_commented_json(out_dir / filename, content)
-    # เปิดไฟล์ CSV ผลรายภาพในโหมดเขียนโดยไม่เพิ่มบรรทัดว่างซ้ำ
+
     with (out_dir / "per_image.csv").open("w", newline="", encoding="utf-8") as file:
-        # สร้างตัวเขียน CSV โดยใช้ Key ของผลลัพธ์แถวแรกเป็นชื่อคอลัมน์
         writer = csv.DictWriter(file, fieldnames=list(rows[0]))
-        # เขียนแถวชื่อคอลัมน์ลงไฟล์ CSV
         writer.writeheader()
-        # เขียนผลลัพธ์ของทุกภาพและทุกขั้นตอนลงไฟล์ CSV
         writer.writerows(rows)
 
     # -------------------------------------------------------------------------
     # ส่วนที่ 6.4: การสร้างกราฟ Confusion matrix (ระบุ TP, TN, FP, FN ชัดเจน)
     # -------------------------------------------------------------------------
-    # สร้าง Figure สำหรับ Confusion matrix ก่อนและหลัง Morphology สองช่อง
     fig, axes = plt.subplots(1, 2, figsize=(11, 5.2))
     labels_map = [
-        [("TN", "True Negative\n(Background → Background)"), ("FP", "False Positive\n(Background → Pet)")],
-        [("FN", "False Negative\n(Pet → Background)"), ("TP", "True Positive\n(Pet → Pet)")],
+        [("TN", "True Negative\n(Background → Background)"), ("FP", "False Positive\n(Background → Item)")],
+        [("FN", "False Negative\n(Item → Background)"), ("TP", "True Positive\n(Item → Item)")],
     ]
     for ax, (stage, counts) in zip(axes, totals.items()):
-        # จัด TN, FP, FN และ TP เป็นเมทริกซ์ขนาด 2 คูณ 2
         matrix = np.array([[counts["TN"], counts["FP"]], [counts["FN"], counts["TP"]]])
         ax.imshow(matrix, cmap="Blues")
         for (row, col), value in np.ndenumerate(matrix):
             abbr, desc = labels_map[row][col]
             text_color = "white" if value > matrix.max() * 0.45 else "black"
-            # แสดงชื่อย่อ TP, TN, FP, FN ตัวหนาขนาดใหญ่
             ax.text(col, row - 0.13, abbr, ha="center", va="center", color=text_color, fontsize=15, fontweight="bold")
-            # แสดงจำนวนพิกเซลจริง
             ax.text(col, row + 0.07, f"{value:,}", ha="center", va="center", color=text_color, fontsize=12, fontweight="medium")
-            # แสดงคำอธิบายการทำนายสั้นๆ
             sub_desc = desc.splitlines()[1].strip("()")
             ax.text(col, row + 0.23, f"({sub_desc})", ha="center", va="center", color=text_color, fontsize=8.5, alpha=0.9)
-        # กำหนด Tick และชื่อแกนอย่างชัดเจน
         ax.set(
             xticks=[0, 1],
             yticks=[0, 1],
-            xticklabels=["Background\n(Predicted)", "Pet\n(Predicted)"],
-            yticklabels=["Background\n(Actual)", "Pet\n(Actual)"],
+            xticklabels=["Background\n(Predicted)", "Item (Apple)\n(Predicted)"],
+            yticklabels=["Background\n(Actual)", "Item (Apple)\n(Actual)"],
             xlabel="Predicted Class",
             ylabel="Actual Class",
             title=f"Stage: {stage.title()}"
         )
-    fig.suptitle("Pixel-Level Confusion Matrix (TP, TN, FP, FN Breakdown)", fontsize=13, fontweight="bold", y=0.98)
+    fig.suptitle("Pixel-Level Confusion Matrix: Red Apples vs Textured Surface (CIELAB a*)", fontsize=13, fontweight="bold", y=0.98)
     fig.tight_layout()
     fig.savefig(out_dir / "confusion_matrix.png", dpi=160, bbox_inches="tight")
     plt.close(fig)
 
     # -------------------------------------------------------------------------
-    # ส่วนที่ 6.5: การสร้าง ROC curve และจุดทำงานของ Binary mask พร้อมคำอธิบาย
+    # ส่วนที่ 6.5: การสร้าง Dual ROC Curves พร้อม 2 Best Dots และ Dots ทุก 0.02 FPR
     # -------------------------------------------------------------------------
-    # สร้าง Figure และ Axes สำหรับ ROC curve ขนาดใหญ่ชัดเจน
-    fig, ax = plt.subplots(figsize=(8, 7.2))
-    # วาดเส้น ROC ของคะแนนความต่างสีต่อเนื่อง
-    ax.plot(fpr, tpr, color="#1f77b4", linewidth=2.3, label=f"Color-distance score curve (AUC = {auc:.3f})")
-    # วาดเส้นประอ้างอิงการสุ่มเดา
-    ax.plot([0, 1], [0, 1], "--", color="gray", linewidth=1.5, label="Random guess baseline (AUC = 0.500)")
+    fig, ax = plt.subplots(figsize=(8.5, 7.5))
+    # Line 1: Threshold ROC curve
+    ax.plot(fpr_thresh, tpr_thresh, color="#1f77b4", linewidth=2.4, label=f"Line 1: Threshold Curve (Raw a* Score, AUC = {auc_thresh:.3f})")
+    # Line 2: Morphology ROC curve
+    ax.plot(fpr_morph, tpr_morph, color="#2ca02c", linewidth=2.4, label=f"Line 2: Morphology Curve (Opening & Closing, AUC = {auc_morph:.3f})")
+    # Random guess baseline
+    ax.plot([0, 1], [0, 1], "--", color="gray", linewidth=1.5, label="Random Guess Baseline (AUC = 0.500)")
 
-    # พล็อตจุดทำงานของ Before และ After
-    colors = {"before": "#ff7f0e", "after": "#2ca02c"}
-    pts = {}
-    for stage, counts in totals.items():
-        fp_rate = counts["FP"] / (counts["FP"] + counts["TN"])
-        rec = metrics(counts)["recall"]
-        pts[stage] = (fp_rate, rec)
-        ax.scatter(fp_rate, rec, color=colors[stage], label=f"Operating Point: {stage.title()}", s=110, zorder=5)
+    # Sampled Dots every 0.02 FPR
+    ax.scatter(target_fprs, dots_thresh_tpr, color="#1f77b4", s=25, alpha=0.85, zorder=4, label="Line 1 Dots (Every 0.02 FPR)")
+    ax.scatter(target_fprs, dots_morph_tpr, color="#2ca02c", s=25, alpha=0.85, zorder=4, label="Line 2 Dots (Every 0.02 FPR)")
 
-    # ใส่คำอธิบายพร้อมลูกศรชี้จุด Before
+    # 2 Best Operating Dots
+    ax.scatter([fpr_best_thresh], [tpr_best_thresh], color="#ff7f0e", marker="o", s=130, edgecolors="black", linewidths=1.5, zorder=6, label=f"Best Dot Line 1 (Threshold = {threshold_before:.2f})")
+    ax.scatter([fpr_best_morph], [tpr_best_morph], color="#e11d48", marker="o", s=130, edgecolors="black", linewidths=1.5, zorder=6, label=f"Best Dot Line 2 (Morphology = {threshold_after:.2f})")
+
+    # Annotations for 2 Best Dots
     ax.annotate(
-        f"Before (Threshold={threshold:.2f})\nFPR={pts['before'][0]:.3f}, TPR={pts['before'][1]:.3f}",
-        xy=pts["before"],
-        xytext=(pts["before"][0] + 0.08, pts["before"][1] - 0.09),
+        f"Best Morphology Dot\n(t={threshold_after:.2f}, FPR={fpr_best_morph:.3f}, TPR={tpr_best_morph:.3f})",
+        xy=(fpr_best_morph, tpr_best_morph),
+        xytext=(0.10, 0.88),
+        arrowprops=dict(facecolor="#e11d48", edgecolor="#e11d48", shrink=0.08, width=1.5, headwidth=6),
+        fontsize=9,
+        fontweight="bold",
+        bbox=dict(boxstyle="round,pad=0.4", fc="#ffebee", ec="#e11d48", lw=1.3),
+        zorder=7
+    )
+    ax.annotate(
+        f"Best Threshold Dot\n(t={threshold_before:.2f}, FPR={fpr_best_thresh:.3f}, TPR={tpr_best_thresh:.3f})",
+        xy=(fpr_best_thresh, tpr_best_thresh),
+        xytext=(0.28, 0.65),
         arrowprops=dict(facecolor="#ff7f0e", edgecolor="#ff7f0e", shrink=0.08, width=1.5, headwidth=6),
         fontsize=9,
         fontweight="bold",
         bbox=dict(boxstyle="round,pad=0.4", fc="#fff8e1", ec="#ff7f0e", lw=1.3),
-        zorder=6
-    )
-    # ใส่คำอธิบายพร้อมลูกศรชี้จุด After
-    ax.annotate(
-        f"After Morphology\nFPR={pts['after'][0]:.3f}, TPR={pts['after'][1]:.3f}\n(FPR drops: noise removed)",
-        xy=pts["after"],
-        xytext=(pts["after"][0] - 0.38, pts["after"][1] + 0.06),
-        arrowprops=dict(facecolor="#2ca02c", edgecolor="#2ca02c", shrink=0.08, width=1.5, headwidth=6),
-        fontsize=9,
-        fontweight="bold",
-        bbox=dict(boxstyle="round,pad=0.4", fc="#e8f5e9", ec="#2ca02c", lw=1.3),
-        zorder=6
-    )
-
-    # กล่องข้อความอธิบายว่าทำไมมีเพียงเส้นเดียว
-    why_one_line = (
-        "WHY ONLY 1 ROC CURVE (NOT TWO)?\n"
-        "1. The solid curve requires continuous scores (0.0 to 1.0) to sweep thresholds.\n"
-        "2. Morphology operates on a binary mask (0 or 1) with no continuous probabilities.\n"
-        "   Thus, Morphology forms a single discrete Operating Point (Dot), not a new curve."
-    )
-    ax.text(
-        0.03, 0.03, why_one_line,
-        transform=ax.transAxes,
-        fontsize=8.5,
-        verticalalignment="bottom",
-        bbox=dict(boxstyle="round,pad=0.5", facecolor="#f8f9fa", edgecolor="#adb5bd", lw=1.2, alpha=0.95)
+        zorder=7
     )
 
     ax.set(
         xlabel="False Positive Rate (FPR = FP / [FP + TN])",
         ylabel="True Positive Rate (TPR / Recall = TP / [TP + FN])",
-        title="Test Pixels: ROC Curve & Operating Points",
+        title="Test Pixels: Dual ROC Curves & 0.02 FPR Operating Points (Red Apples Dataset)",
         xlim=(-0.02, 1.02),
         ylim=(-0.02, 1.05)
     )
     ax.grid(True, linestyle=":", alpha=0.6)
-    ax.legend(loc="lower right", framealpha=0.95, fontsize=9.5)
+    ax.legend(loc="lower right", framealpha=0.95, fontsize=9.0)
     fig.tight_layout()
     fig.savefig(out_dir / "roc_curve.png", dpi=160, bbox_inches="tight")
     plt.close(fig)
@@ -432,50 +444,34 @@ def main(args=None):
     # เริ่มสร้าง List ของข้อความสำหรับรายงานผลรูปแบบ Markdown
     lines = [
         # เพิ่มหัวข้อหลักของรายงานผล
-        "# Experiment results",
-        # เพิ่มบรรทัดว่างหลังหัวข้อหลัก
+        "# Experiment results: Red Apples on Textured Surfaces (CIELAB a*)",
         "",
         # เพิ่มข้อความระบุคำสั่งและแหล่งข้อมูลที่ใช้สร้างผล
-        "Generated by `python run.py` from real Oxford-IIIT Pet images.",
-        # เพิ่มบรรทัดว่างก่อนข้อมูลการแบ่งชุด
+        "Generated by `python run.py` from Red Apple images (5 varieties) on textured surfaces with cast shadows.",
         "",
         # เพิ่มจำนวนภาพ Validation จำนวนภาพ Test และ Threshold
-        f"Validation: {len(split['validation'])} images. Test: {len(split['test'])} images. Threshold: {threshold}.",
-        # เพิ่มบรรทัดว่างก่อนคำอธิบาย Metrics
+        f"Validation: {len(split['validation'])} images. Test: {len(split['test'])} images. Thresholds: Before={threshold_before}, After={threshold_after}.",
         "",
         # เพิ่มคำอธิบายวิธีรวมพิกเซลและ Label ที่ละเว้น
         "Metrics pool all valid test pixels after resizing; trimap label 3 is excluded.",
-        # เพิ่มบรรทัดว่างก่อนตาราง Metrics
         "",
         # เพิ่มชื่อคอลัมน์ของตาราง Metrics
         "| Stage | Accuracy | Precision | Recall | IoU | Dice |",
-        # เพิ่มแนวจัดรูปแบบและการจัดชิดของคอลัมน์ตาราง
         "|---|---:|---:|---:|---:|---:|",
-    # ปิด List เริ่มต้นของข้อความรายงาน
     ]
     # วนขั้นตอนก่อนและหลัง Morphology ตามลำดับในยอดรวม
     for stage in totals:
-        # คำนวณ Metrics รวมของขั้นตอนปัจจุบัน
         values = metrics(totals[stage])
-        # จัดรูป Metrics เป็นทศนิยมสี่ตำแหน่งแล้วเพิ่มเป็นหนึ่งแถวในตาราง
         lines.append("| " + stage + " | " + " | ".join(f"{v:.4f}" for v in values.values()) + " |")
-    # เพิ่มบรรทัดว่าง ค่า AUC และคำอธิบายข้อจำกัดต่อท้ายรายงาน
     lines += [
-        # เพิ่มบรรทัดว่างหลังตาราง Metrics
         "",
-        # เพิ่มค่า ROC AUC ของคะแนนต่อเนื่องเป็นทศนิยมสี่ตำแหน่ง
-        f"Continuous score ROC AUC: {auc:.4f}.",
-        # เพิ่มบรรทัดว่างก่อนคำอธิบาย Morphology
+        f"Line 1 (Threshold) ROC AUC: {auc_thresh:.4f}.",
+        f"Line 2 (Morphology) ROC AUC: {auc_morph:.4f}.",
         "",
-        # เพิ่มคำอธิบายว่าผล Morphology แสดงเป็นจุดทำงาน
-        "Morphology is shown as an operating point, not a separate ROC curve.",
-        # เพิ่มบรรทัดว่างก่อนคำอธิบายข้อจำกัด
+        "Dual ROC curves: Line 1 sweeps threshold on raw a* scores; Line 2 applies morphological opening & closing at every threshold.",
         "",
-        # เพิ่มข้อจำกัดของสมมติฐานพื้นหลังและผลกระทบที่อาจเกิดจาก Morphology
-        "This simple baseline assumes the border represents background. Similar pet/background colors and pets touching the border can cause errors. Morphology can remove small details and does not guarantee an improvement.",
-    # ปิด List ของข้อความที่เพิ่มต่อท้ายรายงาน
+        "This baseline detects red color using the CIELAB a* channel exclusively. Morphology removes small shadow/grain noise and fills specular reflection gaps.",
     ]
-    # รวมข้อความด้วยอักขระขึ้นบรรทัดใหม่และบันทึกเป็นไฟล์ Markdown แบบ UTF-8
     (out_dir / "RESULTS.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     # แสดงข้อมูลสรุปเป็น JSON แบบเยื้องบนหน้าจอ
     print(json.dumps(summary, indent=2))

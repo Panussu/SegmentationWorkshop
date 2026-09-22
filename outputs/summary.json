@@ -2,25 +2,555 @@
   "_comment": {
     "validation_images": "จำนวนภาพที่ใช้เลือก threshold",
     "test_images": "จำนวนภาพที่ใช้ประเมินผลจริง",
-    "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold",
     "max_image_side": "ความยาวด้านที่ยาวที่สุดหลังย่อภาพ หน่วยพิกเซล",
     "kernel_size": "ขนาด Kernel สำหรับ Morphology (Opening และ Closing)",
     "distance_scale": "ตัวหารปรับสเกลคะแนนระยะสีใน foreground_score",
     "ignored_trimap_label": "ค่า label ของขอบที่ไม่แน่นอน ซึ่งไม่นำมาคิดคะแนน",
     "evaluated_pixels": "จำนวนพิกเซล test ที่ประเมินทั้งหมด หลังย่อภาพและตัด label ที่ไม่ประเมินออก",
-    "score_roc_auc": "พื้นที่ใต้ ROC จากคะแนนสีต่อเนื่องของพิกเซล test ก่อน Threshold และ Morphology",
     "before": "ผลรวมระดับพิกเซลก่อน Morphology ไม่ใช่ค่าเฉลี่ย metrics รายภาพ",
     "after": "ผลรวมระดับพิกเซลหลัง Opening และ Closing ไม่ใช่ค่าเฉลี่ย metrics รายภาพ"
   },
   "validation_images": 20,
   "test_images": 50,
-  "threshold": 0.4,
+  "threshold_before": 0.11,
+  "threshold_after": 0.05,
   "max_image_side": 256,
   "kernel_size": 3,
-  "distance_scale": 50.0,
+  "distance_scale": 20.0,
   "ignored_trimap_label": 3,
-  "evaluated_pixels": 2139052,
-  "score_roc_auc": 0.7440254413226614,
+  "evaluated_pixels": 2381327,
+  "auc_threshold_line": 0.9604518318554849,
+  "auc_morphology_line": 0.9604671134376561,
+  "best_dot_threshold": {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold"
+    },
+    "threshold": 0.11,
+    "fpr": 0.0019047795600005562,
+    "tpr": 0.9060800466463047
+  },
+  "best_dot_morphology": {
+    "_comment": {
+      "threshold": "คะแนนขั้นต่ำที่เลือกพิกเซลเป็นสัตว์: score >= threshold"
+    },
+    "threshold": 0.05,
+    "fpr": 0.005992988001279122,
+    "tpr": 0.9168257922316196
+  },
+  "line1_dots_every_002_fpr": [
+    {
+      "_comment": {},
+      "fpr": 0.0,
+      "tpr": 0.7061
+    },
+    {
+      "_comment": {},
+      "fpr": 0.02,
+      "tpr": 0.9206
+    },
+    {
+      "_comment": {},
+      "fpr": 0.04,
+      "tpr": 0.9225
+    },
+    {
+      "_comment": {},
+      "fpr": 0.06,
+      "tpr": 0.9243
+    },
+    {
+      "_comment": {},
+      "fpr": 0.08,
+      "tpr": 0.9262
+    },
+    {
+      "_comment": {},
+      "fpr": 0.1,
+      "tpr": 0.9281
+    },
+    {
+      "_comment": {},
+      "fpr": 0.12,
+      "tpr": 0.9299
+    },
+    {
+      "_comment": {},
+      "fpr": 0.14,
+      "tpr": 0.9318
+    },
+    {
+      "_comment": {},
+      "fpr": 0.16,
+      "tpr": 0.9337
+    },
+    {
+      "_comment": {},
+      "fpr": 0.18,
+      "tpr": 0.9356
+    },
+    {
+      "_comment": {},
+      "fpr": 0.2,
+      "tpr": 0.9374
+    },
+    {
+      "_comment": {},
+      "fpr": 0.22,
+      "tpr": 0.939
+    },
+    {
+      "_comment": {},
+      "fpr": 0.24,
+      "tpr": 0.9405
+    },
+    {
+      "_comment": {},
+      "fpr": 0.26,
+      "tpr": 0.9421
+    },
+    {
+      "_comment": {},
+      "fpr": 0.28,
+      "tpr": 0.9437
+    },
+    {
+      "_comment": {},
+      "fpr": 0.3,
+      "tpr": 0.9452
+    },
+    {
+      "_comment": {},
+      "fpr": 0.32,
+      "tpr": 0.9468
+    },
+    {
+      "_comment": {},
+      "fpr": 0.34,
+      "tpr": 0.9484
+    },
+    {
+      "_comment": {},
+      "fpr": 0.36,
+      "tpr": 0.9499
+    },
+    {
+      "_comment": {},
+      "fpr": 0.38,
+      "tpr": 0.9515
+    },
+    {
+      "_comment": {},
+      "fpr": 0.4,
+      "tpr": 0.9531
+    },
+    {
+      "_comment": {},
+      "fpr": 0.42,
+      "tpr": 0.9546
+    },
+    {
+      "_comment": {},
+      "fpr": 0.44,
+      "tpr": 0.9562
+    },
+    {
+      "_comment": {},
+      "fpr": 0.46,
+      "tpr": 0.9577
+    },
+    {
+      "_comment": {},
+      "fpr": 0.48,
+      "tpr": 0.9593
+    },
+    {
+      "_comment": {},
+      "fpr": 0.5,
+      "tpr": 0.9609
+    },
+    {
+      "_comment": {},
+      "fpr": 0.52,
+      "tpr": 0.9624
+    },
+    {
+      "_comment": {},
+      "fpr": 0.54,
+      "tpr": 0.964
+    },
+    {
+      "_comment": {},
+      "fpr": 0.56,
+      "tpr": 0.9656
+    },
+    {
+      "_comment": {},
+      "fpr": 0.58,
+      "tpr": 0.9671
+    },
+    {
+      "_comment": {},
+      "fpr": 0.6,
+      "tpr": 0.9687
+    },
+    {
+      "_comment": {},
+      "fpr": 0.62,
+      "tpr": 0.9703
+    },
+    {
+      "_comment": {},
+      "fpr": 0.64,
+      "tpr": 0.9718
+    },
+    {
+      "_comment": {},
+      "fpr": 0.66,
+      "tpr": 0.9734
+    },
+    {
+      "_comment": {},
+      "fpr": 0.68,
+      "tpr": 0.975
+    },
+    {
+      "_comment": {},
+      "fpr": 0.7,
+      "tpr": 0.9765
+    },
+    {
+      "_comment": {},
+      "fpr": 0.72,
+      "tpr": 0.9781
+    },
+    {
+      "_comment": {},
+      "fpr": 0.74,
+      "tpr": 0.9797
+    },
+    {
+      "_comment": {},
+      "fpr": 0.76,
+      "tpr": 0.9812
+    },
+    {
+      "_comment": {},
+      "fpr": 0.78,
+      "tpr": 0.9828
+    },
+    {
+      "_comment": {},
+      "fpr": 0.8,
+      "tpr": 0.9844
+    },
+    {
+      "_comment": {},
+      "fpr": 0.82,
+      "tpr": 0.9859
+    },
+    {
+      "_comment": {},
+      "fpr": 0.84,
+      "tpr": 0.9875
+    },
+    {
+      "_comment": {},
+      "fpr": 0.86,
+      "tpr": 0.989
+    },
+    {
+      "_comment": {},
+      "fpr": 0.88,
+      "tpr": 0.9906
+    },
+    {
+      "_comment": {},
+      "fpr": 0.9,
+      "tpr": 0.9922
+    },
+    {
+      "_comment": {},
+      "fpr": 0.92,
+      "tpr": 0.9937
+    },
+    {
+      "_comment": {},
+      "fpr": 0.94,
+      "tpr": 0.9953
+    },
+    {
+      "_comment": {},
+      "fpr": 0.96,
+      "tpr": 0.9969
+    },
+    {
+      "_comment": {},
+      "fpr": 0.98,
+      "tpr": 0.9984
+    },
+    {
+      "_comment": {},
+      "fpr": 1.0,
+      "tpr": 1.0
+    }
+  ],
+  "line2_dots_every_002_fpr": [
+    {
+      "_comment": {},
+      "fpr": 0.0,
+      "tpr": 0.7036
+    },
+    {
+      "_comment": {},
+      "fpr": 0.02,
+      "tpr": 0.9184
+    },
+    {
+      "_comment": {},
+      "fpr": 0.04,
+      "tpr": 0.9207
+    },
+    {
+      "_comment": {},
+      "fpr": 0.06,
+      "tpr": 0.9229
+    },
+    {
+      "_comment": {},
+      "fpr": 0.08,
+      "tpr": 0.9252
+    },
+    {
+      "_comment": {},
+      "fpr": 0.1,
+      "tpr": 0.9275
+    },
+    {
+      "_comment": {},
+      "fpr": 0.12,
+      "tpr": 0.9297
+    },
+    {
+      "_comment": {},
+      "fpr": 0.14,
+      "tpr": 0.932
+    },
+    {
+      "_comment": {},
+      "fpr": 0.16,
+      "tpr": 0.9343
+    },
+    {
+      "_comment": {},
+      "fpr": 0.18,
+      "tpr": 0.9362
+    },
+    {
+      "_comment": {},
+      "fpr": 0.2,
+      "tpr": 0.9377
+    },
+    {
+      "_comment": {},
+      "fpr": 0.22,
+      "tpr": 0.9393
+    },
+    {
+      "_comment": {},
+      "fpr": 0.24,
+      "tpr": 0.9408
+    },
+    {
+      "_comment": {},
+      "fpr": 0.26,
+      "tpr": 0.9424
+    },
+    {
+      "_comment": {},
+      "fpr": 0.28,
+      "tpr": 0.9439
+    },
+    {
+      "_comment": {},
+      "fpr": 0.3,
+      "tpr": 0.9455
+    },
+    {
+      "_comment": {},
+      "fpr": 0.32,
+      "tpr": 0.9471
+    },
+    {
+      "_comment": {},
+      "fpr": 0.34,
+      "tpr": 0.9486
+    },
+    {
+      "_comment": {},
+      "fpr": 0.36,
+      "tpr": 0.9502
+    },
+    {
+      "_comment": {},
+      "fpr": 0.38,
+      "tpr": 0.9517
+    },
+    {
+      "_comment": {},
+      "fpr": 0.4,
+      "tpr": 0.9533
+    },
+    {
+      "_comment": {},
+      "fpr": 0.42,
+      "tpr": 0.9548
+    },
+    {
+      "_comment": {},
+      "fpr": 0.44,
+      "tpr": 0.9564
+    },
+    {
+      "_comment": {},
+      "fpr": 0.46,
+      "tpr": 0.958
+    },
+    {
+      "_comment": {},
+      "fpr": 0.48,
+      "tpr": 0.9595
+    },
+    {
+      "_comment": {},
+      "fpr": 0.5,
+      "tpr": 0.9611
+    },
+    {
+      "_comment": {},
+      "fpr": 0.52,
+      "tpr": 0.9626
+    },
+    {
+      "_comment": {},
+      "fpr": 0.54,
+      "tpr": 0.9642
+    },
+    {
+      "_comment": {},
+      "fpr": 0.56,
+      "tpr": 0.9657
+    },
+    {
+      "_comment": {},
+      "fpr": 0.58,
+      "tpr": 0.9673
+    },
+    {
+      "_comment": {},
+      "fpr": 0.6,
+      "tpr": 0.9689
+    },
+    {
+      "_comment": {},
+      "fpr": 0.62,
+      "tpr": 0.9704
+    },
+    {
+      "_comment": {},
+      "fpr": 0.64,
+      "tpr": 0.972
+    },
+    {
+      "_comment": {},
+      "fpr": 0.66,
+      "tpr": 0.9735
+    },
+    {
+      "_comment": {},
+      "fpr": 0.68,
+      "tpr": 0.9751
+    },
+    {
+      "_comment": {},
+      "fpr": 0.7,
+      "tpr": 0.9766
+    },
+    {
+      "_comment": {},
+      "fpr": 0.72,
+      "tpr": 0.9782
+    },
+    {
+      "_comment": {},
+      "fpr": 0.74,
+      "tpr": 0.9798
+    },
+    {
+      "_comment": {},
+      "fpr": 0.76,
+      "tpr": 0.9813
+    },
+    {
+      "_comment": {},
+      "fpr": 0.78,
+      "tpr": 0.9829
+    },
+    {
+      "_comment": {},
+      "fpr": 0.8,
+      "tpr": 0.9844
+    },
+    {
+      "_comment": {},
+      "fpr": 0.82,
+      "tpr": 0.986
+    },
+    {
+      "_comment": {},
+      "fpr": 0.84,
+      "tpr": 0.9875
+    },
+    {
+      "_comment": {},
+      "fpr": 0.86,
+      "tpr": 0.9891
+    },
+    {
+      "_comment": {},
+      "fpr": 0.88,
+      "tpr": 0.9907
+    },
+    {
+      "_comment": {},
+      "fpr": 0.9,
+      "tpr": 0.9922
+    },
+    {
+      "_comment": {},
+      "fpr": 0.92,
+      "tpr": 0.9938
+    },
+    {
+      "_comment": {},
+      "fpr": 0.94,
+      "tpr": 0.9953
+    },
+    {
+      "_comment": {},
+      "fpr": 0.96,
+      "tpr": 0.9969
+    },
+    {
+      "_comment": {},
+      "fpr": 0.98,
+      "tpr": 0.9984
+    },
+    {
+      "_comment": {},
+      "fpr": 1.0,
+      "tpr": 1.0
+    }
+  ],
   "before": {
     "_comment": {
       "TN": "จำนวนพิกเซลพื้นหลังที่ทำนายถูกว่าเป็นพื้นหลัง",
@@ -33,15 +563,15 @@
       "iou": "พื้นที่ทับซ้อนหารพื้นที่รวม: TP / (TP + FP + FN)",
       "dice": "คะแนนความซ้อนทับ: 2TP / (2TP + FP + FN)"
     },
-    "TN": 767091,
-    "FP": 656811,
-    "FN": 150671,
-    "TP": 564479,
-    "accuracy": 0.6225047357427496,
-    "precision": 0.462198986317746,
-    "recall": 0.7893155282108648,
-    "iou": 0.4114395380043602,
-    "dice": 0.5830069612278201
+    "TN": 1722896,
+    "FP": 3288,
+    "FN": 61531,
+    "TP": 593612,
+    "accuracy": 0.9727803027471658,
+    "precision": 0.9944915396213772,
+    "recall": 0.9060800466463047,
+    "iou": 0.9015553641915401,
+    "dice": 0.9482294138460101
   },
   "after": {
     "_comment": {
@@ -55,14 +585,14 @@
       "iou": "พื้นที่ทับซ้อนหารพื้นที่รวม: TP / (TP + FP + FN)",
       "dice": "คะแนนความซ้อนทับ: 2TP / (2TP + FP + FN)"
     },
-    "TN": 812274,
-    "FP": 611628,
-    "FN": 155347,
-    "TP": 559803,
-    "accuracy": 0.6414416292825046,
-    "precision": 0.4778796190300581,
-    "recall": 0.782777039781864,
-    "iou": 0.42192665238645805,
-    "dice": 0.5934576888031842
+    "TN": 1715839,
+    "FP": 10345,
+    "FN": 54491,
+    "TP": 600652,
+    "accuracy": 0.9727731638703966,
+    "precision": 0.9830686566382486,
+    "recall": 0.9168257922316196,
+    "iou": 0.9025737503906908,
+    "dice": 0.9487923926264078
   }
 }

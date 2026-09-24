@@ -142,10 +142,14 @@ function applyRocVisibility() {
   // Line 1 elements
   const l1El = document.getElementById('dynamic-guide-l1');
   if (l1El) l1El.style.display = rocVisibility.l1 ? '' : 'none';
+  const l1Points = document.getElementById('roc-points-l1');
+  if (l1Points) l1Points.style.display = rocVisibility.l1 ? '' : 'none';
 
   // Line 2 elements
   const l2El = document.getElementById('dynamic-guide-l2');
   if (l2El) l2El.style.display = rocVisibility.l2 ? '' : 'none';
+  const l2Points = document.getElementById('roc-points-l2');
+  if (l2Points) l2Points.style.display = rocVisibility.l2 ? '' : 'none';
 
   // Best Dot Line 1 group
   const bestL1El = document.getElementById('best-group-l1');
@@ -181,27 +185,95 @@ function buildSmoothRocPath(points, toX, toY) {
   return path;
 }
 
+function buildStepRocPath(points, toX, toY) {
+  if (!points.length) return '';
+  let path = `M ${toX(points[0].fpr).toFixed(3)} ${toY(points[0].tpr).toFixed(3)}`;
+
+  for (let i = 1; i < points.length; i++) {
+    const point = points[i];
+    path += ` H ${toX(point.fpr).toFixed(3)} V ${toY(point.tpr).toFixed(3)}`;
+  }
+  return path;
+}
+
+function actualRocPoints(thresholds, fprValues, tprValues) {
+  const points = [];
+  for (let i = thresholds.length - 1; i >= 0; i--) {
+    const point = {threshold: thresholds[i], fpr: fprValues[i], tpr: tprValues[i]};
+    const previous = points[points.length - 1];
+    if (!previous || previous.fpr !== point.fpr || previous.tpr !== point.tpr) {
+      points.push(point);
+    }
+  }
+  return points;
+}
+
+function renderRocStepPoints(groupId, points, toX, toY) {
+  const group = document.getElementById(groupId);
+  if (!group) return;
+  group.replaceChildren();
+
+  points.forEach((point, index) => {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', toX(point.fpr).toFixed(3));
+    circle.setAttribute('cy', toY(point.tpr).toFixed(3));
+    circle.setAttribute('r', index === 0 || index === points.length - 1 ? '2.4' : '1.65');
+    circle.setAttribute('tabindex', '0');
+
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = `Threshold ${Number(point.threshold).toFixed(6)} | FPR ${point.fpr.toFixed(6)} | TPR ${point.tpr.toFixed(6)}`;
+    circle.appendChild(title);
+    group.appendChild(circle);
+  });
+}
+
 function initRocCurves() {
   const toX = fpr => 50 + fpr * 420;
   const toY = tpr => 360 - tpr * 320;
 
-  const rawDescending = [...RAW_OPERATING_POINTS].sort((a, b) => b.threshold - a.threshold);
-  const rawTrail = [{fpr: 0, tpr: 0}];
-  rawDescending.forEach(p => {
-    if (p.fpr > 0 || p.tpr > 0) rawTrail.push({fpr: p.fpr, tpr: p.tpr});
-  });
-
-  const morphDescending = [...MORPH_OPERATING_POINTS].sort((a, b) => b.threshold - a.threshold);
-  const morphTrail = [{fpr: 0, tpr: 0}];
-  morphDescending.forEach(p => {
-    if (p.fpr > 0 || p.tpr > 0) morphTrail.push({fpr: p.fpr, tpr: p.tpr});
-  });
+  const hasActualCurves = SCORE_DISTRIBUTION
+    && SCORE_DISTRIBUTION.raw_curve
+    && SCORE_DISTRIBUTION.morphology_curve;
+  const rawTrail = hasActualCurves
+    ? actualRocPoints(
+        SCORE_DISTRIBUTION.raw_curve.thresholds,
+        SCORE_DISTRIBUTION.raw_curve.fpr,
+        SCORE_DISTRIBUTION.raw_curve.tpr
+      )
+    : [...RAW_OPERATING_POINTS].sort((a, b) => b.threshold - a.threshold);
+  const morphTrail = hasActualCurves
+    ? actualRocPoints(
+        SCORE_DISTRIBUTION.morphology_curve.thresholds,
+        SCORE_DISTRIBUTION.morphology_curve.fpr,
+        SCORE_DISTRIBUTION.morphology_curve.tpr
+      )
+    : [...MORPH_OPERATING_POINTS].sort((a, b) => b.threshold - a.threshold);
 
   const guide1 = document.getElementById('dynamic-guide-l1');
-  if (guide1) guide1.setAttribute('d', buildSmoothRocPath(rawTrail, toX, toY));
+  if (guide1) {
+    guide1.setAttribute('d', hasActualCurves
+      ? buildStepRocPath(rawTrail, toX, toY)
+      : buildSmoothRocPath(rawTrail, toX, toY));
+  }
 
   const guide2 = document.getElementById('dynamic-guide-l2');
-  if (guide2) guide2.setAttribute('d', buildSmoothRocPath(morphTrail, toX, toY));
+  if (guide2) {
+    guide2.setAttribute('d', hasActualCurves
+      ? buildStepRocPath(morphTrail, toX, toY)
+      : buildSmoothRocPath(morphTrail, toX, toY));
+  }
+
+  if (hasActualCurves) {
+    renderRocStepPoints('roc-points-l1', rawTrail, toX, toY);
+    renderRocStepPoints('roc-points-l2', morphTrail, toX, toY);
+  }
+
+  const resolutionLabel = document.getElementById('roc-resolution-label');
+  if (resolutionLabel && hasActualCurves) {
+    const rawThresholdCount = SCORE_DISTRIBUTION.raw_curve.thresholds.length;
+    const morphThresholdCount = SCORE_DISTRIBUTION.morphology_curve.thresholds.length;
+    resolutionLabel.textContent = `Exact ROC • Raw ${rawTrail.length}/${rawThresholdCount} steps • Morphology ${morphTrail.length}/${morphThresholdCount} steps`;
+  }
 
   applyRocVisibility();
 }

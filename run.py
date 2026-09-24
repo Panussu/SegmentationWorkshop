@@ -222,6 +222,19 @@ def build_score_distribution(y_true, y_score, bin_count=1000):
         np.searchsorted(foreground_sorted, thresholds, side="left") / foreground_sorted.size
     )
 
+    # Every distinct test score is a real decision boundary. The extra value
+    # immediately above the maximum score is the all-negative ROC endpoint.
+    exact_thresholds = np.append(
+        np.unique(np.asarray(y_score, dtype=np.float64)),
+        np.nextafter(float(np.max(y_score)), np.inf),
+    )
+    exact_background_survival = 1.0 - (
+        np.searchsorted(background_sorted, exact_thresholds, side="left") / background_sorted.size
+    )
+    exact_foreground_survival = 1.0 - (
+        np.searchsorted(foreground_sorted, exact_thresholds, side="left") / foreground_sorted.size
+    )
+
     return {
         "source": "Actual valid test pixels from foreground_score (CIELAB a*)",
         "bin_count": int(bin_count),
@@ -242,6 +255,11 @@ def build_score_distribution(y_true, y_score, bin_count=1000):
         "thresholds": np.round(thresholds, 3).tolist(),
         "fpr": np.round(background_survival, 8).tolist(),
         "tpr": np.round(foreground_survival, 8).tolist(),
+        "raw_curve": {
+            "thresholds": exact_thresholds.tolist(),
+            "fpr": np.round(exact_background_survival, 8).tolist(),
+            "tpr": np.round(exact_foreground_survival, 8).tolist(),
+        },
     }
 
 
@@ -324,11 +342,15 @@ def main(args=None):
     score_distribution = build_score_distribution(y_true, y_score, bin_count=1000)
 
     # Line 1: Threshold ROC Curve (คะแนนดิบต่อเนื่องจากช่อง a*)
-    fpr_thresh, tpr_thresh, _ = roc_curve(y_true, y_score)
+    fpr_thresh, tpr_thresh, _ = roc_curve(y_true, y_score, drop_intermediate=False)
     auc_thresh = float(roc_auc_score(y_true, y_score))
 
     # Line 2: Morphology Pipeline ROC Curve (กวาด 99 Thresholds พร้อมรัน clean_mask)
-    morph_sweep_thresholds = np.linspace(0.01, 0.99, 99)
+    # Morphology is evaluated at every observed score boundary. Sampling more
+    # values would only repeat identical binary masks and ROC coordinates.
+    morph_sweep_thresholds = np.asarray(
+        score_distribution["raw_curve"]["thresholds"], dtype=np.float64
+    )
     morph_pts = []
     for t in morph_sweep_thresholds:
         t_fp, t_tn, t_tp, t_fn = 0, 0, 0, 0
@@ -344,7 +366,7 @@ def main(args=None):
         tpr_v = t_tp / (t_tp + t_fn) if (t_tp + t_fn) > 0 else 0.0
         morph_pts.append((fpr_v, tpr_v, float(t)))
 
-    all_morph_pts = [(0.0, 0.0, 1.0)] + morph_pts + [(1.0, 1.0, 0.0)]
+    all_morph_pts = morph_pts
     all_morph_pts.sort(key=lambda x: (x[0], x[1]))
     fpr_morph = np.array([p[0] for p in all_morph_pts])
     tpr_morph = np.array([p[1] for p in all_morph_pts])
@@ -361,6 +383,25 @@ def main(args=None):
 
     fpr_best_morph = totals["after"]["FP"] / (totals["after"]["FP"] + totals["after"]["TN"])
     tpr_best_morph = totals["after"]["TP"] / (totals["after"]["TP"] + totals["after"]["FN"])
+
+    morph_by_threshold = sorted(all_morph_pts, key=lambda point: point[2])
+    score_distribution["morphology_curve"] = {
+        "thresholds": [float(point[2]) for point in morph_by_threshold],
+        "fpr": [round(float(point[0]), 8) for point in morph_by_threshold],
+        "tpr": [round(float(point[1]), 8) for point in morph_by_threshold],
+    }
+    score_distribution["best_points"] = {
+        "raw": {
+            "threshold": float(threshold_before),
+            "fpr": float(fpr_best_thresh),
+            "tpr": float(tpr_best_thresh),
+        },
+        "morphology": {
+            "threshold": float(threshold_after),
+            "fpr": float(fpr_best_morph),
+            "tpr": float(tpr_best_morph),
+        },
+    }
 
     summary = {
         "validation_images": len(split["validation"]),

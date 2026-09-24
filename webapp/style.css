@@ -558,6 +558,19 @@ body {
   gap: 8px;
 }
 
+.plot-title-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plot-title-stack small {
+  color: var(--text-muted);
+  font-family: var(--font-code);
+  font-size: 0.66rem;
+  font-weight: 500;
+}
+
 .plot-legend {
   display: flex;
   gap: 12px;
@@ -723,9 +736,11 @@ body {
 
 .dynamic-guide {
   fill: none;
-  stroke-width: 4.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke-width: 2.6;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  shape-rendering: geometricPrecision;
+  vector-effect: non-scaling-stroke;
   pointer-events: stroke;
   opacity: 0.95;
   cursor: pointer;
@@ -739,6 +754,23 @@ body {
   stroke-dasharray: 8 5;
   filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.8));
 }
+
+.roc-step-points circle {
+  vector-effect: non-scaling-stroke;
+  stroke: #07111f;
+  stroke-width: 0.7;
+  opacity: 0.9;
+  cursor: crosshair;
+  transition: r 0.12s ease, opacity 0.12s ease;
+}
+.roc-step-points circle:hover,
+.roc-step-points circle:focus {
+  r: 4px;
+  opacity: 1;
+  outline: none;
+}
+.points-line1 circle { fill: var(--accent-blue); }
+.points-line2 circle { fill: var(--accent-emerald); }
 
 .svg-dot-pulse {
   fill: none;

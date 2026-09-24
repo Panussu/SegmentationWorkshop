@@ -164,7 +164,10 @@
         <!-- Interactive SVG ROC Curve -->
         <div class="roc-plot-card">
           <div class="plot-topbar">
-            <span>Test Pixels: ROC Curves (Full Range)</span>
+            <div class="plot-title-stack">
+              <span>Test Pixels: ROC Curves (Full Range)</span>
+              <small id="roc-resolution-label">กำลังโหลดจุด ROC จริง…</small>
+            </div>
             <div class="plot-legend" role="group" aria-label="ROC Curve Controls">
               <button type="button" class="leg-toggle active" id="toggle-l1" onclick="toggleRocItem('l1')" role="checkbox" aria-checked="true" title="แสดง/ซ่อน Line 1: Threshold (Raw a*)">
                 <span class="leg-check-box">✓</span>
@@ -215,6 +218,8 @@
                 d="M 50.00 360.00 Q 50.00 299.20 50.01 227.20 Q 50.01 155.20 50.05 125.44 Q 50.08 95.68 50.25 84.00 Q 50.42 72.32 51.47 69.47 Q 52.52 66.62 56.51 64.67 Q 60.50 62.72 265.25 51.36 L 470.00 40.00">
                 <title>Line 2: Morphology (Post-Proc) - Full ROC Curve (AUC = 0.9605)</title>
               </path>
+              <g id="roc-points-l1" class="roc-step-points points-line1" aria-label="All raw threshold ROC steps"></g>
+              <g id="roc-points-l2" class="roc-step-points points-line2" aria-label="All morphology ROC steps"></g>
 
               <!-- Best Dot Line 1 (Threshold t=0.11) -->
               <g id="best-group-l1" class="best-group">

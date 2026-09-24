@@ -48,6 +48,7 @@ python -m venv .venv
 - `per_image.csv`: ผลแยกเป็นรายภาพ
 - `summary.json`: ค่าประเมินรวม
 - `threshold_search.json`: ผลเลือก threshold บน validation
+- `score_distribution.json`: histogram 1,000 bins และ FPR/TPR จากคะแนนพิกเซล test จริง สำหรับกราฟแจกแจงแบบ Interactive
 - `split.json`: รายชื่อภาพที่ใช้ เพื่อทำซ้ำและตรวจสอบได้
 
 ## ข้อมูลและข้อจำกัด

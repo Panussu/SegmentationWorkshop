@@ -190,6 +190,61 @@ def save_example(name, rgb, truth, valid, raw, cleaned, output_dir=OUT):
     plt.close(fig)
 
 
+def build_score_distribution(y_true, y_score, bin_count=1000):
+    """สร้าง histogram/KDE และ survival rates จากคะแนนพิกเซล test จริง."""
+    thresholds = np.linspace(0.0, 1.0, bin_count + 1)
+    centers = (thresholds[:-1] + thresholds[1:]) / 2.0
+    background_scores = np.asarray(y_score[~y_true], dtype=np.float64)
+    foreground_scores = np.asarray(y_score[y_true], dtype=np.float64)
+
+    background_counts, _ = np.histogram(background_scores, bins=thresholds)
+    foreground_counts, _ = np.histogram(foreground_scores, bins=thresholds)
+
+    # Smooth only the displayed density line; raw histogram counts remain in
+    # the export and all FPR/TPR rates below are calculated from raw scores.
+    smoothing_radius = 30
+    smoothing_sigma = 8.0
+    kernel_x = np.arange(-smoothing_radius, smoothing_radius + 1, dtype=np.float64)
+    kernel = np.exp(-0.5 * (kernel_x / smoothing_sigma) ** 2)
+    kernel /= kernel.sum()
+
+    def display_density(counts):
+        smoothed = np.convolve(counts.astype(np.float64), kernel, mode="same")
+        peak = float(smoothed.max())
+        return smoothed / peak if peak > 0 else smoothed
+
+    background_sorted = np.sort(background_scores)
+    foreground_sorted = np.sort(foreground_scores)
+    background_survival = 1.0 - (
+        np.searchsorted(background_sorted, thresholds, side="left") / background_sorted.size
+    )
+    foreground_survival = 1.0 - (
+        np.searchsorted(foreground_sorted, thresholds, side="left") / foreground_sorted.size
+    )
+
+    return {
+        "source": "Actual valid test pixels from foreground_score (CIELAB a*)",
+        "bin_count": int(bin_count),
+        "background_total": int(background_scores.size),
+        "foreground_total": int(foreground_scores.size),
+        "score_min": float(y_score.min()),
+        "score_max": float(y_score.max()),
+        "display_smoothing": {
+            "type": "gaussian",
+            "window_bins": int(kernel.size),
+            "sigma_bins": smoothing_sigma,
+        },
+        "bin_centers": np.round(centers, 6).tolist(),
+        "background_counts": background_counts.astype(int).tolist(),
+        "foreground_counts": foreground_counts.astype(int).tolist(),
+        "background_density": np.round(display_density(background_counts), 6).tolist(),
+        "foreground_density": np.round(display_density(foreground_counts), 6).tolist(),
+        "thresholds": np.round(thresholds, 3).tolist(),
+        "fpr": np.round(background_survival, 8).tolist(),
+        "tpr": np.round(foreground_survival, 8).tolist(),
+    }
+
+
 # =============================================================================
 # ส่วนที่ 6: กระบวนการทดลองหลักและการตรวจสอบชุดข้อมูล
 # =============================================================================
@@ -266,6 +321,7 @@ def main(args=None):
     # ส่วนที่ 6.2: การคำนวณ ROC Curves (Line 1: Threshold vs Line 2: Morphology)
     # -------------------------------------------------------------------------
     y_true, y_score = np.concatenate(all_truth), np.concatenate(all_scores)
+    score_distribution = build_score_distribution(y_true, y_score, bin_count=1000)
 
     # Line 1: Threshold ROC Curve (คะแนนดิบต่อเนื่องจากช่อง a*)
     fpr_thresh, tpr_thresh, _ = roc_curve(y_true, y_score)
@@ -316,6 +372,7 @@ def main(args=None):
         "distance_scale": args.distance_scale,
         "ignored_trimap_label": 3,
         "evaluated_pixels": int(y_true.size),
+        "score_distribution_bins": score_distribution["bin_count"],
         "auc_threshold_line": auc_thresh,
         "auc_morphology_line": auc_morph,
         "best_dot_threshold": {
@@ -346,6 +403,17 @@ def main(args=None):
     # -------------------------------------------------------------------------
     for filename, content in [("summary.json", summary), ("threshold_search.json", tuning), ("split.json", split)]:
         write_commented_json(out_dir / filename, content)
+
+    # เก็บ histogram จริงทั้งแบบ JSON และ JavaScript เพื่อให้หน้าเว็บเปิดผ่าน
+    # file:// ได้โดยไม่ติดข้อจำกัด CORS ของ fetch().
+    distribution_json = json.dumps(score_distribution, ensure_ascii=False, separators=(",", ":"))
+    (out_dir / "score_distribution.json").write_text(distribution_json + "\n", encoding="utf-8")
+    web_assets_dir = ROOT / "webapp" / "assets"
+    if web_assets_dir.exists():
+        (web_assets_dir / "score_distribution.js").write_text(
+            "window.SCORE_DISTRIBUTION_DATA=" + distribution_json + ";\n",
+            encoding="utf-8",
+        )
 
     with (out_dir / "per_image.csv").open("w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=list(rows[0]))

@@ -156,7 +156,7 @@
       <div class="section-header">
         <div class="title-with-pill">
           <span class="pill">Section 2</span>
-          <h3>ROC Curve: ทำไมมี 2 เส้น (Threshold vs Morphology), 2 จุด Best Dots และจุดทุก 0.02 FPR?</h3>
+          <h3>ROC Curve: เส้น Threshold และ Morphology ที่ยืด–หดตามการทำงาน</h3>
         </div>
       </div>
 
@@ -164,13 +164,17 @@
         <!-- Interactive SVG ROC Curve -->
         <div class="roc-plot-card">
           <div class="plot-topbar">
-            <span>Test Pixels: Dual ROC Curves (AUC = 0.9605)</span>
+            <span>Test Pixels: Live ROC Operating Trails</span>
             <div class="plot-legend">
-              <span class="leg-item"><span class="leg-line blue-line"></span> Line 1: Threshold (Raw a*)</span>
-              <span class="leg-item"><span class="leg-line green-line"></span> Line 2: Morphology (Post-Proc)</span>
-              <span class="leg-item"><span class="leg-dot orange-dot"></span> Best Threshold (t=0.11)</span>
-              <span class="leg-item"><span class="leg-dot red-dot"></span> Best Morphology (t=0.05)</span>
-              <span class="leg-item"><span class="leg-dot sub-dot-sample"></span> ทุกๆ 0.02 FPR (51 จุด)</span>
+              <button type="button" class="leg-toggle active" id="toggle-l1" onclick="toggleRocLine('l1')" title="แสดง/ซ่อน Line 1: Threshold">
+                <span class="leg-line blue-line"></span> Line 1: Threshold (Raw a*)
+              </button>
+              <button type="button" class="leg-toggle active" id="toggle-l2" onclick="toggleRocLine('l2')" title="แสดง/ซ่อน Line 2: Morphology">
+                <span class="leg-line green-line"></span> Line 2: Morphology (Post-Proc)
+              </button>
+              <button type="button" class="leg-toggle active" id="toggle-best" onclick="toggleRocLine('best')" title="แสดง/ซ่อน Best Operating Dots">
+                <span class="leg-dot orange-dot"></span><span class="leg-dot red-dot"></span> Best Dots
+              </button>
             </div>
           </div>
 
@@ -193,28 +197,42 @@
               <!-- Diagonal Random Guess Line -->
               <line x1="50" y1="360" x2="470" y2="40" class="random-line" stroke-dasharray="6,6" />
 
-              <!-- Line 1: Threshold ROC Curve -->
-              <path id="roc-path-line1" class="curve-path-line1" />
+              <!-- Two curved operating trails grow along each pipeline's ROC path -->
+              <path id="dynamic-guide-l1" class="dynamic-guide guide-line1" />
+              <path id="dynamic-guide-l2" class="dynamic-guide guide-line2" />
 
-              <!-- Line 2: Morphology ROC Curve -->
-              <path id="roc-path-line2" class="curve-path-line2" />
+              <!-- Permanent Best Operating Dots & Annotations -->
+              <g id="best-markers-group">
+                <!-- Glowing pulse rings -->
+                <circle cx="50.8" cy="70.0" class="svg-dot-pulse pulse-before" />
+                <circle cx="52.5" cy="66.6" class="svg-dot-pulse pulse-after" />
 
-              <!-- Sub-dots every 0.02 FPR container -->
-              <g id="dots-line1-group"></g>
-              <g id="dots-line2-group"></g>
+                <!-- Leader lines to labels -->
+                <path d="M 52.5 66.6 L 85 66.6 L 105 58" class="best-leader leader-l2" />
+                <path d="M 50.8 70.0 L 80 88 L 105 102" class="best-leader leader-l1" />
 
-              <!-- Best Dot Line 1 (Threshold t=0.11: FPR=0.0019, TPR=0.9061 -> cx=50.8, cy=70.0) -->
-              <g id="dot-before-group" class="svg-point" onclick="highlightPoint('before')">
-                <circle cx="50.8" cy="70.0" r="7" class="svg-dot dot-before" />
-                <circle cx="50.8" cy="70.0" r="14" class="svg-dot-pulse pulse-before" />
-                <text x="68" y="74" class="svg-label">Best Threshold (t=0.11)</text>
-              </g>
+                <!-- Best Dots: Permanently anchored on the curve -->
+                <circle id="best-marker-l1" cx="50.8" cy="70.0" r="6" class="svg-dot dot-before" onclick="updateRocSlider(0.11)">
+                  <title>⭐ จุดดีที่สุด Line 1 (Threshold t=0.11): FPR=0.002, TPR=0.906 (คลิกเพื่อเลือก)</title>
+                </circle>
+                <circle id="best-marker-l2" cx="52.5" cy="66.6" r="6" class="svg-dot dot-after" onclick="updateRocSlider(0.05)">
+                  <title>⭐ จุดดีที่สุด Line 2 (Morphology t=0.05): FPR=0.006, TPR=0.917 (คลิกเพื่อเลือก)</title>
+                </circle>
 
-              <!-- Best Dot Line 2 (Morphology t=0.05: FPR=0.0060, TPR=0.9168 -> cx=52.5, cy=66.6) -->
-              <g id="dot-after-group" class="svg-point" onclick="highlightPoint('after')">
-                <circle cx="52.5" cy="66.6" r="7" class="svg-dot dot-after" />
-                <circle cx="52.5" cy="66.6" r="14" class="svg-dot-pulse pulse-after" />
-                <text x="68" y="54" class="svg-label">Best Morphology (t=0.05)</text>
+                <!-- Best Labels / Badges inside SVG -->
+                <g class="best-badge-group badge-l2" onclick="updateRocSlider(0.05)">
+                  <rect x="105" y="44" width="165" height="28" rx="6" class="best-badge-rect rect-l2" />
+                  <circle cx="117" cy="58" r="4.5" fill="var(--accent-rose)" stroke="#fff" stroke-width="1.5" />
+                  <text x="128" y="56" class="best-badge-text-title">⭐ Best L2 (t = 0.05)</text>
+                  <text x="128" y="66" class="best-badge-text-sub">TPR 91.7% | FPR 0.6%</text>
+                </g>
+
+                <g class="best-badge-group badge-l1" onclick="updateRocSlider(0.11)">
+                  <rect x="105" y="88" width="165" height="28" rx="6" class="best-badge-rect rect-l1" />
+                  <circle cx="117" cy="102" r="4.5" fill="var(--accent-amber)" stroke="#fff" stroke-width="1.5" />
+                  <text x="128" y="100" class="best-badge-text-title">⭐ Best L1 (t = 0.11)</text>
+                  <text x="128" y="110" class="best-badge-text-sub">TPR 90.6% | FPR 0.2%</text>
+                </g>
               </g>
 
               <!-- Dynamic Interactive Threshold Markers on Both Curves -->
@@ -247,7 +265,22 @@
               <span>🕹️ จำลองเลื่อนค่า Threshold บนเส้นทั้งสอง:</span>
               <strong id="slider-threshold-val">0.11</strong>
             </div>
-            <input type="range" id="threshold-slider" min="0.02" max="0.50" step="0.01" value="0.11" oninput="updateRocSlider(this.value)">
+            <input type="range" id="threshold-slider" min="0.00" max="1.00" step="0.01" value="0.11" oninput="updateRocSlider(this.value)" aria-label="Threshold ตั้งแต่ 0 ถึง 1">
+            <div class="slider-range-labels">
+              <span>0.00 (ตรวจจับมากที่สุด)</span>
+              <span>1.00 (เข้มงวดที่สุด)</span>
+            </div>
+            <div class="slider-presets-row">
+              <span class="preset-label">🎯 ดีดกลับไปจุดดีที่สุด:</span>
+              <div class="preset-btns-group">
+                <button type="button" class="btn-preset-snap snap-l2" onclick="updateRocSlider(0.05)" title="ดีด Slider ไปที่จุดที่ดีที่สุดของ Line 2 (Morphology)">
+                  ⭐ Best L2 (Morphology t=0.05)
+                </button>
+                <button type="button" class="btn-preset-snap snap-l1" onclick="updateRocSlider(0.11)" title="ดีด Slider ไปที่จุดที่ดีที่สุดของ Line 1 (Threshold)">
+                  ⭐ Best L1 (Threshold t=0.11)
+                </button>
+              </div>
+            </div>
             <div class="slider-stats">
               <span><span>Line 1 (Threshold):</span> <span>FPR = <strong id="sim-fpr-l1">0.002</strong> &nbsp;|&nbsp; TPR = <strong id="sim-tpr-l1">0.906</strong></span></span>
               <span><span>Line 2 (Morphology):</span> <span>FPR = <strong id="sim-fpr-l2">0.006</strong> &nbsp;|&nbsp; TPR = <strong id="sim-tpr-l2">0.917</strong></span></span>
@@ -255,9 +288,19 @@
           </div>
         </div>
 
-        <!-- Explanations: 2 Lines, 2 Best Dots, 0.02 FPR Sampling -->
+        <!-- Explanations: two live ROC operating trails -->
         <div class="roc-qa-card">
           <div class="qa-item highlight">
+            <h4>⭐ จุดสีส้มและสีชมพู (2 Best Operating Dots) คืออะไร?</h4>
+            <p>
+              คือ <strong>ตำแหน่งจุดการทำงานที่ดีที่สุด (Optimal Operating Points)</strong> ที่คำนวณได้จริงจากชุดทดสอบ (Test Set) ซึ่งถูกตรึงไว้บนกราฟอย่างถาวรเพื่อให้เปรียบเทียบได้ตลอดเวลา แม้จะเลื่อน Slider ไปที่ค่าอื่น:
+              <br>• <strong>จุดสีชมพู (Best Line 2: Morphology, t = 0.05):</strong> จุดแชมป์ของโปรเจกต์ ได้ค่า <strong>IoU = 0.9026, Dice = 0.9488, Recall = 91.68%</strong> (พิกัด FPR = 0.006, TPR = 0.917)
+              <br>• <strong>จุดสีส้ม (Best Line 1: Threshold Only, t = 0.11):</strong> จุดที่ดีที่สุดก่อนทำ Morphology ได้ค่า <strong>IoU = 0.9016, Recall = 90.61%</strong> (พิกัด FPR = 0.002, TPR = 0.906)
+              <br><em>💡 คลิกที่จุดหรือกล่องป้าย Best บนกราฟ (หรือปุ่มลัดใต้ Slider) เพื่อดีดแถบเลื่อนกลับมาที่จุดดีที่สุดได้ทันที</em>
+            </p>
+          </div>
+
+          <div class="qa-item">
             <h4>❓ ทำไมในกราฟ ROC ถึงมี 2 เส้น (Threshold vs Morphology)?</h4>
             <p>
               • <strong>เส้นที่ 1 (สีน้ำเงิน - Line 1: Threshold Only):</strong> เกิดจากการกวาดค่า Threshold บนคะแนนความแดงดิบ (CIELAB a*) ก่อนทำ Morphology ได้ค่า <strong>AUC = 0.9605</strong>
@@ -266,18 +309,16 @@
           </div>
 
           <div class="qa-item">
-            <h4>🎯 จุดกลม 2 จุด (Best Operating Dots) บนแต่ละเส้นคืออะไร?</h4>
+            <h4>🎯 ทำไมเส้นทั้งสองจึงยืด–หดเมื่อเลื่อน Threshold?</h4>
             <p>
-              คือ <strong>จุดทำงานที่ดีที่สุด (Best Operating Points)</strong> ที่ให้ค่า IoU สูงสุดบนแต่ละเส้น:
-              <br>• <strong>จุดสีส้ม (บน Line 1):</strong> จุดที่ดีที่สุดก่อนทำ Morphology ณ <strong>t = 0.11</strong> ได้ <strong>FPR = 0.0019</strong>, <strong>TPR = 0.9061</strong>, <strong>IoU = 0.9016</strong>
-              <br>• <strong>จุดสีแดง (บน Line 2):</strong> จุดที่ดีที่สุดหลังทำ Morphology ณ <strong>t = 0.05</strong> ได้ <strong>FPR = 0.0060</strong>, <strong>TPR = 0.9168</strong>, <strong>IoU = 0.9026</strong> ซึ่งช่วยกู้คืนพิกเซลแอปเปิล (TP) เพิ่มขึ้นถึง <strong>7,040 พิกเซล!</strong>
+              เส้นแสดงเฉพาะเส้นทางที่ระบบทำงานมาถึงค่า Threshold ปัจจุบัน เมื่อเลื่อนไปทาง <strong>0.00</strong> ระบบยอมรับพิกเซลมากขึ้น เส้นจึงยาวขึ้นไปทางมุมขวาบน และเมื่อเลื่อนไปทาง <strong>1.00</strong> ระบบเข้มงวดขึ้น เส้นจึงหดกลับเข้าหาจุดเริ่มต้น
             </p>
           </div>
 
           <div class="qa-item">
-            <h4>⚪ จุดกลมย่อยตามเส้นทุกๆ 0.02 FPR คืออะไร?</h4>
+            <h4>⚪ จุดกลมสองสีที่ปลายเส้นคืออะไร?</h4>
             <p>
-              คือ <strong>Sampled Dots ทุกช่วง 0.02 FPR</strong> รวม 51 จุดต่อเส้น (0.00, 0.02, 0.04, ..., 1.00) เพื่อให้ผู้ศึกษาเห็นอัตราการเติบโตของ TPR เมื่อยอมให้เกิด False Alarm เพิ่มขึ้นทีละ 2% ได้อย่างชัดเจน นำเมาส์ไปชี้ (Hover) ที่จุดเพื่อดูพิกัดตัวเลขจริงได้
+              จุดสีฟ้าและสีเขียวคือ <strong>ตำแหน่ง FPR/TPR ปัจจุบัน</strong> ของ Threshold และ Morphology ตามลำดับ จุดทั้งสองจะเคลื่อนที่พร้อมกับปลายเส้น โดยตัวเลขพิกัดจริงแสดงอยู่ใต้ Slider
             </p>
           </div>
 
@@ -288,6 +329,117 @@
             </p>
           </div>
         </div>
+      </div>
+
+      <!-- Distribution view used to explain how one threshold creates TN/FP/FN/TP -->
+      <div class="distribution-card">
+        <div class="distribution-copy">
+          <span class="eyebrow">ROC Distribution View</span>
+          <h4>การแจกแจงคะแนนกับพื้นที่ TN / FP / FN / TP</h4>
+          <p>กราฟนี้สร้างจากคะแนนพิกเซลจริงของชุด Test แยกตาม Ground Truth และมีตัวควบคุมแยกจาก ROC ด้านบน สามารถปรับ Threshold ละเอียดถึง 0.001 โดยไม่ทำให้เส้น ROC ด้านบนขยับ</p>
+          <div class="distribution-source-badge">
+            <span>✓ Actual Test Data</span>
+            <span><strong id="distribution-pixel-count">2,381,327</strong> พิกเซล</span>
+            <span><strong id="distribution-bin-count">1,000</strong> bins</span>
+          </div>
+        </div>
+
+        <div class="distribution-legend" aria-label="คำอธิบายสีของกราฟแจกแจง">
+          <span><i class="dist-swatch tn"></i>TN</span>
+          <span><i class="dist-swatch fp"></i>FP</span>
+          <span><i class="dist-swatch fn"></i>FN</span>
+          <span><i class="dist-swatch tp"></i>TP</span>
+        </div>
+
+        <div class="distribution-controls">
+          <div class="distribution-control-header">
+            <label for="distribution-slider">Threshold ของกราฟแจกแจง</label>
+            <div class="distribution-number-wrap">
+              <span>t =</span>
+              <input type="number" id="distribution-number" min="0" max="1" step="0.001" value="0.110" onchange="updateDistributionSlider(this.value)" aria-label="กรอกค่า Threshold ของกราฟแจกแจง">
+            </div>
+          </div>
+          <input type="range" id="distribution-slider" min="0" max="1" step="0.001" value="0.110" oninput="updateDistributionSlider(this.value)" aria-label="Threshold ของกราฟแจกแจงตั้งแต่ 0 ถึง 1">
+          <div class="slider-range-labels">
+            <span>0.000 — ทำนายเป็นแอปเปิลมาก</span>
+            <span>1.000 — ทำนายเป็นพื้นหลังมาก</span>
+          </div>
+          <div class="distribution-presets" aria-label="ค่า Threshold ตัวอย่าง">
+            <button type="button" onclick="updateDistributionSlider(0.01)">0.010</button>
+            <button type="button" onclick="updateDistributionSlider(0.05)">0.050</button>
+            <button type="button" onclick="updateDistributionSlider(0.11)">Best 0.110</button>
+            <button type="button" onclick="updateDistributionSlider(0.50)">0.500</button>
+            <button type="button" onclick="updateDistributionSlider(1.00)">1.000</button>
+          </div>
+        </div>
+
+        <div class="distribution-svg-wrap">
+          <svg id="distribution-svg" viewBox="0 0 760 330" role="img" aria-labelledby="distribution-title distribution-desc">
+            <title id="distribution-title">การแจกแจงคะแนนพื้นหลังและแอปเปิลที่แบ่งด้วย Threshold</title>
+            <desc id="distribution-desc">โค้งสีน้ำเงินแทนพื้นหลัง โค้งสีแดงแทนแอปเปิล และพื้นที่สี่สีแสดง TN FP FN TP</desc>
+            <defs>
+              <pattern id="fp-hatch-pattern" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(20)">
+                <line x1="0" y1="0" x2="0" y2="6" class="fp-hatch-line" />
+              </pattern>
+              <pattern id="fn-hatch-pattern" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(-20)">
+                <line x1="0" y1="0" x2="0" y2="6" class="fn-hatch-line" />
+              </pattern>
+            </defs>
+
+            <g class="distribution-grid">
+              <line x1="50" y1="50" x2="50" y2="240" />
+              <line x1="184" y1="50" x2="184" y2="240" />
+              <line x1="318" y1="50" x2="318" y2="240" />
+              <line x1="452" y1="50" x2="452" y2="240" />
+              <line x1="586" y1="50" x2="586" y2="240" />
+              <line x1="720" y1="50" x2="720" y2="240" />
+              <line x1="50" y1="145" x2="720" y2="145" />
+            </g>
+            <line x1="50" y1="50" x2="50" y2="240" class="distribution-axis" />
+            <line x1="50" y1="240" x2="720" y2="240" class="distribution-axis" />
+            <path id="dist-tn-area" class="dist-area dist-tn" />
+            <path id="dist-fp-area" class="dist-area dist-fp" />
+            <path id="dist-fn-area" class="dist-area dist-fn" />
+            <path id="dist-tp-area" class="dist-area dist-tp" />
+            <path id="dist-fp-hatch" class="dist-hatch fp-hatch" />
+            <path id="dist-fn-hatch" class="dist-hatch fn-hatch" />
+            <path id="dist-negative-curve" class="distribution-curve negative-curve" />
+            <path id="dist-positive-curve" class="distribution-curve positive-curve" />
+
+            <g id="distribution-threshold-group">
+              <line id="distribution-threshold-line" x1="190" y1="34" x2="190" y2="248" class="distribution-threshold-line" />
+              <path id="distribution-threshold-handle" d="M180 34 L200 34 L190 46 Z" class="distribution-threshold-handle" />
+              <text id="distribution-threshold-label" x="190" y="23" text-anchor="middle" class="distribution-threshold-label">Threshold = 0.110</text>
+            </g>
+
+            <text id="dist-tn-label" x="112" y="118" class="dist-region-label tn-label">TN</text>
+            <text id="dist-fp-label" x="315" y="178" class="dist-region-label fp-label">FP</text>
+            <text id="dist-fn-label" x="395" y="208" class="dist-region-label fn-label">FN</text>
+            <text id="dist-tp-label" x="535" y="104" class="dist-region-label tp-label">TP</text>
+            <text x="124" y="82" class="distribution-density-label negative-label">p(score | Y=0)</text>
+            <text x="300" y="76" class="distribution-density-label positive-label">p(score | Y=1)</text>
+            <text x="50" y="259" text-anchor="middle" class="distribution-tick-label">0.0</text>
+            <text x="184" y="259" text-anchor="middle" class="distribution-tick-label">0.2</text>
+            <text x="318" y="259" text-anchor="middle" class="distribution-tick-label">0.4</text>
+            <text x="452" y="259" text-anchor="middle" class="distribution-tick-label">0.6</text>
+            <text x="586" y="259" text-anchor="middle" class="distribution-tick-label">0.8</text>
+            <text x="720" y="259" text-anchor="middle" class="distribution-tick-label">1.0</text>
+            <text x="200" y="281" text-anchor="middle" class="distribution-class-label negative-label">ค่าจริง: พื้นหลัง (Y=0)</text>
+            <text x="550" y="281" text-anchor="middle" class="distribution-class-label positive-label">ค่าจริง: แอปเปิล (Y=1)</text>
+            <text id="dist-pred-negative" x="100" y="304" text-anchor="middle" class="distribution-prediction-label">ทำนาย Y=0 ←</text>
+            <text id="dist-pred-positive" x="430" y="304" text-anchor="middle" class="distribution-prediction-label">→ ทำนาย Y=1</text>
+            <text x="720" y="324" text-anchor="end" class="distribution-axis-label">คะแนนความแดง a* →</text>
+            <text x="16" y="145" text-anchor="middle" transform="rotate(-90 16 145)" class="distribution-axis-label">ความหนาแน่น</text>
+          </svg>
+        </div>
+
+        <div class="distribution-stats" aria-live="polite">
+          <span title="Specificity = TN / (TN + FP)">TN / Specificity <strong id="dist-stat-tn">99.81%</strong></span>
+          <span title="False Positive Rate = FP / (FP + TN)">FP / FPR <strong id="dist-stat-fp">0.19%</strong></span>
+          <span title="False Negative Rate = FN / (FN + TP)">FN / FNR <strong id="dist-stat-fn">9.39%</strong></span>
+          <span title="Sensitivity หรือ Recall = TP / (TP + FN)">TP / Recall <strong id="dist-stat-tp">90.61%</strong></span>
+        </div>
+        <p class="distribution-note">เส้นทั้งสองคำนวณจาก histogram ของคะแนนจริง 1,000 bins และใช้ Gaussian KDE เฉพาะการแสดงรูปเส้น ส่วนพื้นที่และ FPR/TPR คำนวณจากจำนวนพิกเซลดิบโดยตรง</p>
       </div>
     </section>
 
@@ -483,6 +635,7 @@
     <p>Segmentation Workshop Interactive Guide • Fruits-360 Red Apples with Shadows Dataset • Developed for Computer Vision Education</p>
   </footer>
 
+  <script src="assets/score_distribution.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

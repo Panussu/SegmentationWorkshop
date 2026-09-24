@@ -31,6 +31,8 @@ const DATA = {
   }
 };
 
+const SCORE_DISTRIBUTION = window.SCORE_DISTRIBUTION_DATA || null;
+
 const CELL_DETAILS = {
   TN: {
     tag: "TN: True Negative (ลบแท้)",
@@ -74,110 +76,98 @@ const CELL_DETAILS = {
   }
 };
 
-// 51 Sampled dots along Line 1 (Threshold) and Line 2 (Morphology) at every 0.02 FPR
-const LINE1_DOTS = [
-  {fpr: 0.0, tpr: 0.7061}, {fpr: 0.02, tpr: 0.9206}, {fpr: 0.04, tpr: 0.9225}, {fpr: 0.06, tpr: 0.9243},
-  {fpr: 0.08, tpr: 0.9262}, {fpr: 0.1, tpr: 0.9281}, {fpr: 0.12, tpr: 0.9299}, {fpr: 0.14, tpr: 0.9318},
-  {fpr: 0.16, tpr: 0.9337}, {fpr: 0.18, tpr: 0.9356}, {fpr: 0.2, tpr: 0.9374}, {fpr: 0.22, tpr: 0.939},
-  {fpr: 0.24, tpr: 0.9405}, {fpr: 0.26, tpr: 0.9421}, {fpr: 0.28, tpr: 0.9437}, {fpr: 0.3, tpr: 0.9452},
-  {fpr: 0.32, tpr: 0.9468}, {fpr: 0.34, tpr: 0.9484}, {fpr: 0.36, tpr: 0.9499}, {fpr: 0.38, tpr: 0.9515},
-  {fpr: 0.4, tpr: 0.9531}, {fpr: 0.42, tpr: 0.9546}, {fpr: 0.44, tpr: 0.9562}, {fpr: 0.46, tpr: 0.9577},
-  {fpr: 0.48, tpr: 0.9593}, {fpr: 0.5, tpr: 0.9609}, {fpr: 0.52, tpr: 0.9624}, {fpr: 0.54, tpr: 0.964},
-  {fpr: 0.56, tpr: 0.9656}, {fpr: 0.58, tpr: 0.9671}, {fpr: 0.6, tpr: 0.9687}, {fpr: 0.62, tpr: 0.9703},
-  {fpr: 0.64, tpr: 0.9718}, {fpr: 0.66, tpr: 0.9734}, {fpr: 0.68, tpr: 0.975}, {fpr: 0.7, tpr: 0.9765},
-  {fpr: 0.72, tpr: 0.9781}, {fpr: 0.74, tpr: 0.9797}, {fpr: 0.76, tpr: 0.9812}, {fpr: 0.78, tpr: 0.9828},
-  {fpr: 0.8, tpr: 0.9844}, {fpr: 0.82, tpr: 0.9859}, {fpr: 0.84, tpr: 0.9875}, {fpr: 0.86, tpr: 0.989},
-  {fpr: 0.88, tpr: 0.9906}, {fpr: 0.9, tpr: 0.9922}, {fpr: 0.92, tpr: 0.9937}, {fpr: 0.94, tpr: 0.9953},
-  {fpr: 0.96, tpr: 0.9969}, {fpr: 0.98, tpr: 0.9984}, {fpr: 1.0, tpr: 1.0}
+const RAW_OPERATING_POINTS = [
+  {threshold: 0.00, fpr: 1.0000, tpr: 1.0000},
+  {threshold: 0.02, fpr: 0.0600, tpr: 0.9300},
+  {threshold: 0.05, fpr: 0.0160, tpr: 0.9200},
+  {threshold: 0.11, fpr: 0.0019, tpr: 0.9061},
+  {threshold: 0.25, fpr: 0.0003, tpr: 0.8280},
+  {threshold: 0.50, fpr: 0.00005, tpr: 0.6500},
+  {threshold: 0.75, fpr: 0.0000, tpr: 0.2000},
+  {threshold: 1.00, fpr: 0.0000, tpr: 0.0000}
 ];
 
-const LINE2_DOTS = [
-  {fpr: 0.0, tpr: 0.7036}, {fpr: 0.02, tpr: 0.9184}, {fpr: 0.04, tpr: 0.9207}, {fpr: 0.06, tpr: 0.9229},
-  {fpr: 0.08, tpr: 0.9252}, {fpr: 0.1, tpr: 0.9275}, {fpr: 0.12, tpr: 0.9297}, {fpr: 0.14, tpr: 0.932},
-  {fpr: 0.16, tpr: 0.9343}, {fpr: 0.18, tpr: 0.9362}, {fpr: 0.2, tpr: 0.9377}, {fpr: 0.22, tpr: 0.9393},
-  {fpr: 0.24, tpr: 0.9408}, {fpr: 0.26, tpr: 0.9424}, {fpr: 0.28, tpr: 0.9439}, {fpr: 0.3, tpr: 0.9455},
-  {fpr: 0.32, tpr: 0.9471}, {fpr: 0.34, tpr: 0.9486}, {fpr: 0.36, tpr: 0.9502}, {fpr: 0.38, tpr: 0.9517},
-  {fpr: 0.4, tpr: 0.9533}, {fpr: 0.42, tpr: 0.9548}, {fpr: 0.44, tpr: 0.9564}, {fpr: 0.46, tpr: 0.958},
-  {fpr: 0.48, tpr: 0.9595}, {fpr: 0.5, tpr: 0.9611}, {fpr: 0.52, tpr: 0.9626}, {fpr: 0.54, tpr: 0.9642},
-  {fpr: 0.56, tpr: 0.9657}, {fpr: 0.58, tpr: 0.9673}, {fpr: 0.6, tpr: 0.9689}, {fpr: 0.62, tpr: 0.9704},
-  {fpr: 0.64, tpr: 0.972}, {fpr: 0.66, tpr: 0.9735}, {fpr: 0.68, tpr: 0.9751}, {fpr: 0.7, tpr: 0.9766},
-  {fpr: 0.72, tpr: 0.9782}, {fpr: 0.74, tpr: 0.9798}, {fpr: 0.76, tpr: 0.9813}, {fpr: 0.78, tpr: 0.9829},
-  {fpr: 0.8, tpr: 0.9844}, {fpr: 0.82, tpr: 0.986}, {fpr: 0.84, tpr: 0.9875}, {fpr: 0.86, tpr: 0.9891},
-  {fpr: 0.88, tpr: 0.9907}, {fpr: 0.9, tpr: 0.9922}, {fpr: 0.92, tpr: 0.9938}, {fpr: 0.94, tpr: 0.9953},
-  {fpr: 0.96, tpr: 0.9969}, {fpr: 0.98, tpr: 0.9984}, {fpr: 1.0, tpr: 1.0}
+const MORPH_OPERATING_POINTS = [
+  {threshold: 0.00, fpr: 1.0000, tpr: 1.0000},
+  {threshold: 0.02, fpr: 0.0250, tpr: 0.9290},
+  {threshold: 0.05, fpr: 0.0060, tpr: 0.9168},
+  {threshold: 0.11, fpr: 0.0010, tpr: 0.8990},
+  {threshold: 0.25, fpr: 0.0002, tpr: 0.8260},
+  {threshold: 0.50, fpr: 0.00003, tpr: 0.6400},
+  {threshold: 0.75, fpr: 0.0000, tpr: 0.1900},
+  {threshold: 1.00, fpr: 0.0000, tpr: 0.0000}
 ];
 
 let currentStage = 'before';
 let currentCell = 'TN';
 
+// Visibility state for ROC line toggles
+const rocVisibility = { l1: true, l2: true, best: true };
+
+function toggleRocLine(key) {
+  rocVisibility[key] = !rocVisibility[key];
+  const btn = document.getElementById('toggle-' + key);
+  if (btn) btn.classList.toggle('active', rocVisibility[key]);
+  applyRocVisibility();
+}
+
+function applyRocVisibility() {
+  // Line 1 elements
+  const l1Els = [
+    document.getElementById('dynamic-guide-l1'),
+    document.getElementById('dynamic-marker-l1'),
+  ];
+  l1Els.forEach(el => { if (el) el.style.display = rocVisibility.l1 ? '' : 'none'; });
+
+  // Line 2 elements
+  const l2Els = [
+    document.getElementById('dynamic-guide-l2'),
+    document.getElementById('dynamic-marker-l2'),
+  ];
+  l2Els.forEach(el => { if (el) el.style.display = rocVisibility.l2 ? '' : 'none'; });
+
+  // Best dots group
+  const bestGroup = document.getElementById('best-markers-group');
+  if (bestGroup) bestGroup.style.display = rocVisibility.best ? '' : 'none';
+
+  // Also hide/show the corresponding slider stats rows
+  const statRows = document.querySelectorAll('.slider-stats > span');
+  if (statRows[0]) statRows[0].style.display = rocVisibility.l1 ? '' : 'none';
+  if (statRows[1]) statRows[1].style.display = rocVisibility.l2 ? '' : 'none';
+}
+
+function buildSmoothRocPath(points, toX, toY) {
+  if (!points.length) return '';
+  if (points.length === 1) return `M ${toX(points[0].fpr)} ${toY(points[0].tpr)}`;
+
+  let path = `M ${toX(points[0].fpr)} ${toY(points[0].tpr)}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const current = points[i];
+    const next = points[i + 1];
+    const midX = (toX(current.fpr) + toX(next.fpr)) / 2;
+    const midY = (toY(current.tpr) + toY(next.tpr)) / 2;
+    path += ` Q ${toX(current.fpr)} ${toY(current.tpr)} ${midX} ${midY}`;
+  }
+
+  const last = points[points.length - 1];
+  path += ` L ${toX(last.fpr)} ${toY(last.tpr)}`;
+  return path;
+}
+
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
-  renderDualRocCurves();
   setStage('before');
   selectCell('TN');
   updateGraySlider(128);
   updateRocSlider(0.11);
+  if (SCORE_DISTRIBUTION) {
+    document.getElementById('distribution-pixel-count').textContent = (
+      SCORE_DISTRIBUTION.background_total + SCORE_DISTRIBUTION.foreground_total
+    ).toLocaleString();
+    document.getElementById('distribution-bin-count').textContent = SCORE_DISTRIBUTION.bin_count.toLocaleString();
+  }
+  updateDistributionSlider(0.11);
 });
-
-// Render the 2 ROC lines and 0.02 FPR dots into the SVG
-function renderDualRocCurves() {
-  const svg = document.getElementById('roc-svg');
-  if (!svg) return;
-
-  // Coordinate mapping: FPR 0..1 -> x 50..470; TPR 0..1 -> y 360..40
-  const toX = fpr => 50 + fpr * 420;
-  const toY = tpr => 360 - tpr * 320;
-
-  // Path Line 1: Threshold
-  let d1 = `M ${toX(LINE1_DOTS[0].fpr)} ${toY(LINE1_DOTS[0].tpr)}`;
-  for (let i = 1; i < LINE1_DOTS.length; i++) {
-    d1 += ` L ${toX(LINE1_DOTS[i].fpr)} ${toY(LINE1_DOTS[i].tpr)}`;
-  }
-  const path1 = document.getElementById('roc-path-line1');
-  if (path1) path1.setAttribute('d', d1);
-
-  // Path Line 2: Morphology
-  let d2 = `M ${toX(LINE2_DOTS[0].fpr)} ${toY(LINE2_DOTS[0].tpr)}`;
-  for (let i = 1; i < LINE2_DOTS.length; i++) {
-    d2 += ` L ${toX(LINE2_DOTS[i].fpr)} ${toY(LINE2_DOTS[i].tpr)}`;
-  }
-  const path2 = document.getElementById('roc-path-line2');
-  if (path2) path2.setAttribute('d', d2);
-
-  // Render 0.02 FPR dots for Line 1
-  const gDots1 = document.getElementById('dots-line1-group');
-  if (gDots1) {
-    gDots1.innerHTML = '';
-    LINE1_DOTS.forEach(pt => {
-      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      c.setAttribute('cx', toX(pt.fpr));
-      c.setAttribute('cy', toY(pt.tpr));
-      c.setAttribute('r', '3');
-      c.setAttribute('class', 'sub-dot sub-dot-line1');
-      const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      title.textContent = `Line 1 (Threshold): FPR = ${pt.fpr.toFixed(2)}, TPR = ${pt.tpr.toFixed(4)}`;
-      c.appendChild(title);
-      gDots1.appendChild(c);
-    });
-  }
-
-  // Render 0.02 FPR dots for Line 2
-  const gDots2 = document.getElementById('dots-line2-group');
-  if (gDots2) {
-    gDots2.innerHTML = '';
-    LINE2_DOTS.forEach(pt => {
-      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      c.setAttribute('cx', toX(pt.fpr));
-      c.setAttribute('cy', toY(pt.tpr));
-      c.setAttribute('r', '3');
-      c.setAttribute('class', 'sub-dot sub-dot-line2');
-      const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      title.textContent = `Line 2 (Morphology): FPR = ${pt.fpr.toFixed(2)}, TPR = ${pt.tpr.toFixed(4)}`;
-      c.appendChild(title);
-      gDots2.appendChild(c);
-    });
-  }
-}
 
 // Switch Stage (Before vs After)
 function setStage(stage) {
@@ -271,33 +261,48 @@ function setGrayPreset(val) {
   updateGraySlider(val);
 }
 
+function interpolateOperatingPoint(threshold, points) {
+  const t = Math.max(points[0].threshold, Math.min(points[points.length - 1].threshold, threshold));
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const left = points[i];
+    const right = points[i + 1];
+    if (t <= right.threshold) {
+      const ratio = (t - left.threshold) / (right.threshold - left.threshold);
+      return {
+        fpr: left.fpr + ((right.fpr - left.fpr) * ratio),
+        tpr: left.tpr + ((right.tpr - left.tpr) * ratio)
+      };
+    }
+  }
+
+  return points[points.length - 1];
+}
+
+function buildOperatingTrail(threshold, points, toX, toY) {
+  const current = interpolateOperatingPoint(threshold, points);
+  const descending = [...points].sort((a, b) => b.threshold - a.threshold);
+  const trail = [{fpr: 0, tpr: 0}];
+
+  descending.forEach(point => {
+    if (point.threshold > threshold) trail.push({fpr: point.fpr, tpr: point.tpr});
+  });
+  trail.push({fpr: current.fpr, tpr: current.tpr});
+
+  return buildSmoothRocPath(trail, toX, toY);
+}
+
 // ROC Dual Curve Simulation Slider
 function updateRocSlider(thresholdVal) {
-  const t = parseFloat(thresholdVal);
+  const t = Math.max(0.00, Math.min(1.00, parseFloat(thresholdVal)));
+  const slider = document.getElementById('threshold-slider');
+  if (slider) slider.value = t.toFixed(2);
   document.getElementById('slider-threshold-val').textContent = t.toFixed(2);
 
-  // Approximate mathematical model for Line 1 (Threshold) and Line 2 (Morphology):
-  // At t=0.05: Line 1 FPR ~ 0.016, TPR ~ 0.920 | Line 2 FPR ~ 0.006, TPR ~ 0.917
-  // At t=0.11: Line 1 FPR ~ 0.002, TPR ~ 0.906 | Line 2 FPR ~ 0.001, TPR ~ 0.899
-  // At t=0.25: Line 1 FPR ~ 0.000, TPR ~ 0.828 | Line 2 FPR ~ 0.000, TPR ~ 0.826
-  let fpr1 = 0.002;
-  let tpr1 = 0.906;
-  let fpr2 = 0.006;
-  let tpr2 = 0.917;
-
-  if (t < 0.11) {
-    const ratio = (0.11 - t) / (0.11 - 0.03);
-    fpr1 = 0.002 + ratio * 0.035;
-    tpr1 = 0.906 + ratio * 0.018;
-    fpr2 = 0.001 + ratio * 0.012;
-    tpr2 = 0.899 + ratio * 0.022;
-  } else {
-    const ratio = (t - 0.11) / (0.50 - 0.11);
-    fpr1 = Math.max(0.000, 0.002 * Math.exp(-ratio * 4));
-    tpr1 = Math.max(0.600, 0.906 - ratio * 0.25);
-    fpr2 = Math.max(0.000, 0.001 * Math.exp(-ratio * 4));
-    tpr2 = Math.max(0.590, 0.899 - ratio * 0.25);
-  }
+  const rawPoint = interpolateOperatingPoint(t, RAW_OPERATING_POINTS);
+  const morphPoint = interpolateOperatingPoint(t, MORPH_OPERATING_POINTS);
+  const {fpr: fpr1, tpr: tpr1} = rawPoint;
+  const {fpr: fpr2, tpr: tpr2} = morphPoint;
 
   document.getElementById('sim-fpr-l1').textContent = fpr1.toFixed(3);
   document.getElementById('sim-tpr-l1').textContent = tpr1.toFixed(3);
@@ -319,15 +324,167 @@ function updateRocSlider(thresholdVal) {
     m2.setAttribute('cx', toX(fpr2));
     m2.setAttribute('cy', toY(tpr2));
   }
+
+  const guide1 = document.getElementById('dynamic-guide-l1');
+  if (guide1) {
+    guide1.setAttribute('d', buildOperatingTrail(t, RAW_OPERATING_POINTS, toX, toY));
+  }
+
+  const guide2 = document.getElementById('dynamic-guide-l2');
+  if (guide2) {
+    guide2.setAttribute('d', buildOperatingTrail(t, MORPH_OPERATING_POINTS, toX, toY));
+  }
+
+  // Update preset buttons active highlight
+  const snapL2 = document.querySelector('.snap-l2');
+  const snapL1 = document.querySelector('.snap-l1');
+  if (snapL2) snapL2.classList.toggle('active', Math.abs(t - 0.05) < 0.005);
+  if (snapL1) snapL1.classList.toggle('active', Math.abs(t - 0.11) < 0.005);
 }
 
-// Highlight Best Dots
-function highlightPoint(stage) {
-  if (stage === 'before') {
-    updateRocSlider(0.11);
-    setStage('before');
+// Independent distribution control: this deliberately does not update the ROC slider.
+function updateDistributionSlider(thresholdVal) {
+  const parsed = parseFloat(thresholdVal);
+  if (!Number.isFinite(parsed)) return;
+
+  const t = Math.max(0.00, Math.min(1.00, parsed));
+  const slider = document.getElementById('distribution-slider');
+  const numberInput = document.getElementById('distribution-number');
+  if (slider) slider.value = t.toFixed(3);
+  if (numberInput) numberInput.value = t.toFixed(3);
+
+  if (SCORE_DISTRIBUTION) {
+    const thresholdIndex = Math.max(0, Math.min(
+      SCORE_DISTRIBUTION.bin_count,
+      Math.round(t * SCORE_DISTRIBUTION.bin_count)
+    ));
+    updateDistributionChart(
+      t,
+      SCORE_DISTRIBUTION.fpr[thresholdIndex],
+      SCORE_DISTRIBUTION.tpr[thresholdIndex]
+    );
   } else {
-    updateRocSlider(0.05);
-    setStage('after');
+    const rawPoint = interpolateOperatingPoint(t, RAW_OPERATING_POINTS);
+    updateDistributionChart(t, rawPoint.fpr, rawPoint.tpr);
   }
+}
+
+// Draw the detailed score distribution and its four confusion regions.
+function updateDistributionChart(threshold, fpr, tpr) {
+  const baseY = 240;
+  const minScore = 0.00;
+  const maxScore = 1.00;
+  const xMin = 50;
+  const xMax = 720;
+  const toX = score => xMin + ((score - minScore) / (maxScore - minScore)) * (xMax - xMin);
+  const binCount = SCORE_DISTRIBUTION ? SCORE_DISTRIBUTION.bin_count : 1000;
+
+  const densityAt = (values, score) => {
+    if (!values || !values.length) return 0;
+    const position = (score * binCount) - 0.5;
+    const left = Math.max(0, Math.min(values.length - 1, Math.floor(position)));
+    const right = Math.max(0, Math.min(values.length - 1, left + 1));
+    const fraction = Math.max(0, Math.min(1, position - Math.floor(position)));
+    return values[left] + ((values[right] - values[left]) * fraction);
+  };
+
+  const negativeDensity = score => SCORE_DISTRIBUTION
+    ? densityAt(SCORE_DISTRIBUTION.background_density, score)
+    : 0;
+  const positiveDensity = score => SCORE_DISTRIBUTION
+    ? densityAt(SCORE_DISTRIBUTION.foreground_density, score)
+    : 0;
+  const negativeY = score => baseY - (148 * negativeDensity(score));
+  const positiveY = score => baseY - (148 * positiveDensity(score));
+  const sampleCount = binCount;
+
+  const curvePath = curve => {
+    const points = [];
+    for (let i = 0; i <= sampleCount; i++) {
+      const score = minScore + ((maxScore - minScore) * i / sampleCount);
+      points.push(`${i === 0 ? 'M' : 'L'} ${toX(score).toFixed(2)} ${curve(score).toFixed(2)}`);
+    }
+    return points.join(' ');
+  };
+
+  const areaPath = (curve, start, end) => {
+    const safeStart = Math.max(minScore, Math.min(maxScore, start));
+    const safeEnd = Math.max(minScore, Math.min(maxScore, end));
+    if (safeEnd <= safeStart) return '';
+
+    const points = [`M ${toX(safeStart).toFixed(2)} ${baseY}`];
+    const samples = Math.max(2, Math.ceil((safeEnd - safeStart) / (maxScore - minScore) * sampleCount));
+    for (let i = 0; i <= samples; i++) {
+      const score = safeStart + ((safeEnd - safeStart) * i / samples);
+      points.push(`L ${toX(score).toFixed(2)} ${curve(score).toFixed(2)}`);
+    }
+    points.push(`L ${toX(safeEnd).toFixed(2)} ${baseY} Z`);
+    return points.join(' ');
+  };
+
+  const setPath = (id, path) => {
+    const element = document.getElementById(id);
+    if (element) element.setAttribute('d', path);
+  };
+
+  setPath('dist-negative-curve', curvePath(negativeY));
+  setPath('dist-positive-curve', curvePath(positiveY));
+  setPath('dist-tn-area', areaPath(negativeY, minScore, threshold));
+  setPath('dist-fp-area', areaPath(negativeY, threshold, maxScore));
+  setPath('dist-fn-area', areaPath(positiveY, minScore, threshold));
+  setPath('dist-tp-area', areaPath(positiveY, threshold, maxScore));
+  setPath('dist-fp-hatch', areaPath(negativeY, threshold, maxScore));
+  setPath('dist-fn-hatch', areaPath(positiveY, minScore, threshold));
+
+  const thresholdX = toX(threshold);
+  const thresholdLine = document.getElementById('distribution-threshold-line');
+  if (thresholdLine) {
+    thresholdLine.setAttribute('x1', thresholdX);
+    thresholdLine.setAttribute('x2', thresholdX);
+  }
+
+  const handle = document.getElementById('distribution-threshold-handle');
+  if (handle) {
+    handle.setAttribute('d', `M${thresholdX - 10} 34 L${thresholdX + 10} 34 L${thresholdX} 46 Z`);
+  }
+
+  const thresholdLabel = document.getElementById('distribution-threshold-label');
+  if (thresholdLabel) {
+    thresholdLabel.setAttribute('x', Math.max(105, Math.min(665, thresholdX)));
+    thresholdLabel.textContent = `Threshold = ${threshold.toFixed(3)}`;
+  }
+
+  const regionLabels = {
+    tn: document.getElementById('dist-tn-label'),
+    fp: document.getElementById('dist-fp-label'),
+    fn: document.getElementById('dist-fn-label'),
+    tp: document.getElementById('dist-tp-label')
+  };
+  if (regionLabels.tn) regionLabels.tn.setAttribute('x', (xMin + thresholdX) / 2);
+  if (regionLabels.fp) regionLabels.fp.setAttribute('x', Math.min(xMax - 25, thresholdX + 28));
+  if (regionLabels.fn) regionLabels.fn.setAttribute('x', Math.max(xMin + 25, thresholdX - 28));
+  if (regionLabels.tp) regionLabels.tp.setAttribute('x', (thresholdX + xMax) / 2);
+
+  const leftRoom = thresholdX - xMin;
+  const rightRoom = xMax - thresholdX;
+  if (regionLabels.tn) regionLabels.tn.style.opacity = leftRoom > 45 ? '1' : '0';
+  if (regionLabels.fn) regionLabels.fn.style.opacity = leftRoom > 70 ? '1' : '0';
+  if (regionLabels.fp) regionLabels.fp.style.opacity = rightRoom > 70 ? '1' : '0';
+  if (regionLabels.tp) regionLabels.tp.style.opacity = rightRoom > 45 ? '1' : '0';
+
+  const predictedNegative = document.getElementById('dist-pred-negative');
+  const predictedPositive = document.getElementById('dist-pred-positive');
+  if (predictedNegative) {
+    predictedNegative.setAttribute('x', (xMin + thresholdX) / 2);
+    predictedNegative.style.opacity = leftRoom > 100 ? '1' : '0';
+  }
+  if (predictedPositive) {
+    predictedPositive.setAttribute('x', (thresholdX + xMax) / 2);
+    predictedPositive.style.opacity = rightRoom > 100 ? '1' : '0';
+  }
+
+  document.getElementById('dist-stat-tn').textContent = `${((1 - fpr) * 100).toFixed(2)}%`;
+  document.getElementById('dist-stat-fp').textContent = `${(fpr * 100).toFixed(2)}%`;
+  document.getElementById('dist-stat-fn').textContent = `${((1 - tpr) * 100).toFixed(2)}%`;
+  document.getElementById('dist-stat-tp').textContent = `${(tpr * 100).toFixed(2)}%`;
 }

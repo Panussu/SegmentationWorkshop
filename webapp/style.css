@@ -572,16 +572,16 @@ body {
 .leg-dot.red-dot { width: 10px; height: 10px; background: var(--accent-rose); border-radius: 50%; }
 .leg-dot.sub-dot-sample { width: 6px; height: 6px; background: var(--accent-blue); border-radius: 50%; }
 
-/* ROC Line Toggle Buttons */
+/* ROC Line & Best Dot Toggle Buttons (Checkboxes) */
 .leg-toggle {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 7px;
+  padding: 5px 12px;
   font-size: 0.72rem;
   font-family: var(--font-body);
   color: var(--text-secondary);
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 23, 42, 0.65);
   border: 1px solid var(--border-subtle);
   border-radius: 20px;
   cursor: pointer;
@@ -590,28 +590,75 @@ body {
   white-space: nowrap;
 }
 .leg-toggle:hover {
-  background: rgba(30, 41, 59, 0.8);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--text-primary);
 }
 .leg-toggle.active {
   color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.25);
   background: rgba(30, 41, 59, 0.95);
 }
 .leg-toggle:not(.active) {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 .leg-toggle:not(.active) .leg-line,
 .leg-toggle:not(.active) .leg-dot {
   opacity: 0.3;
 }
+.leg-check-box {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: transparent;
+  transition: all 0.15s ease;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.leg-toggle.active .leg-check-box {
+  color: #fff;
+}
 #toggle-l1.active {
-  border-color: rgba(56, 189, 248, 0.4);
-  box-shadow: inset 0 0 8px rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.45);
+  box-shadow: inset 0 0 8px rgba(56, 189, 248, 0.15);
+}
+#toggle-l1.active .leg-check-box {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #0b1120;
 }
 #toggle-l2.active {
-  border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: inset 0 0 8px rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: inset 0 0 8px rgba(16, 185, 129, 0.15);
+}
+#toggle-l2.active .leg-check-box {
+  background: var(--accent-emerald);
+  border-color: var(--accent-emerald);
+  color: #0b1120;
+}
+#toggle-best-l1.active {
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: inset 0 0 8px rgba(245, 158, 11, 0.15);
+}
+#toggle-best-l1.active .leg-check-box {
+  background: var(--accent-amber);
+  border-color: var(--accent-amber);
+  color: #0b1120;
+}
+#toggle-best-l2.active {
+  border-color: rgba(244, 63, 94, 0.45);
+  box-shadow: inset 0 0 8px rgba(244, 63, 94, 0.15);
+}
+#toggle-best-l2.active .leg-check-box {
+  background: var(--accent-rose);
+  border-color: var(--accent-rose);
+  color: #fff;
 }
 #toggle-best.active {
   border-color: rgba(245, 158, 11, 0.35);
@@ -679,9 +726,9 @@ body {
   stroke-width: 4.5;
   stroke-linecap: round;
   stroke-linejoin: round;
-  pointer-events: none;
-  opacity: 0.92;
-  transition: d 0.12s linear;
+  pointer-events: stroke;
+  opacity: 0.95;
+  cursor: pointer;
 }
 .guide-line1 {
   stroke: var(--accent-blue);
@@ -758,6 +805,74 @@ body {
 .badge-l1:hover .best-badge-text-sub,
 .badge-l2:hover .best-badge-text-sub {
   fill: var(--text-secondary);
+}
+
+/* ROC Curves Summary Box */
+.roc-summary-box {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.roc-summary-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  transition: var(--transition-smooth);
+}
+.roc-summary-item.item-l1 {
+  border-left: 3px solid var(--accent-blue);
+}
+.roc-summary-item.item-l2 {
+  border-left: 3px solid var(--accent-emerald);
+}
+.roc-summary-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+.summary-auc-tag {
+  font-family: var(--font-code);
+  font-size: 0.7rem;
+  padding: 2px 7px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+.roc-summary-metrics {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-family: var(--font-code);
+  font-size: 0.75rem;
+}
+.roc-summary-metrics strong {
+  color: var(--text-primary);
+}
+.summary-metric-pill {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.summary-metric-pill.champion {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fda4af;
+  border-color: rgba(244, 63, 94, 0.3);
 }
 
 /* Preset buttons in slider */

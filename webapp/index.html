@@ -156,7 +156,7 @@
       <div class="section-header">
         <div class="title-with-pill">
           <span class="pill">Section 2</span>
-          <h3>ROC Curve: เส้น Threshold และ Morphology ที่ยืด–หดตามการทำงาน</h3>
+          <h3>ROC Curve: เส้น Threshold และ Morphology แสดงเต็มเส้น (Full ROC Curves)</h3>
         </div>
       </div>
 
@@ -164,22 +164,29 @@
         <!-- Interactive SVG ROC Curve -->
         <div class="roc-plot-card">
           <div class="plot-topbar">
-            <span>Test Pixels: Live ROC Operating Trails</span>
-            <div class="plot-legend">
-              <button type="button" class="leg-toggle active" id="toggle-l1" onclick="toggleRocLine('l1')" title="แสดง/ซ่อน Line 1: Threshold">
+            <span>Test Pixels: ROC Curves (Full Range)</span>
+            <div class="plot-legend" role="group" aria-label="ROC Curve Controls">
+              <button type="button" class="leg-toggle active" id="toggle-l1" onclick="toggleRocItem('l1')" role="checkbox" aria-checked="true" title="แสดง/ซ่อน Line 1: Threshold (Raw a*)">
+                <span class="leg-check-box">✓</span>
                 <span class="leg-line blue-line"></span> Line 1: Threshold (Raw a*)
               </button>
-              <button type="button" class="leg-toggle active" id="toggle-l2" onclick="toggleRocLine('l2')" title="แสดง/ซ่อน Line 2: Morphology">
+              <button type="button" class="leg-toggle active" id="toggle-l2" onclick="toggleRocItem('l2')" role="checkbox" aria-checked="true" title="แสดง/ซ่อน Line 2: Morphology (Post-Proc)">
+                <span class="leg-check-box">✓</span>
                 <span class="leg-line green-line"></span> Line 2: Morphology (Post-Proc)
               </button>
-              <button type="button" class="leg-toggle active" id="toggle-best" onclick="toggleRocLine('best')" title="แสดง/ซ่อน Best Operating Dots">
-                <span class="leg-dot orange-dot"></span><span class="leg-dot red-dot"></span> Best Dots
+              <button type="button" class="leg-toggle active" id="toggle-best-l1" onclick="toggleRocItem('bestL1')" role="checkbox" aria-checked="true" title="แสดง/ซ่อน Best Dot Line 1 (t=0.11)">
+                <span class="leg-check-box">✓</span>
+                <span class="leg-dot orange-dot"></span> Best Dot L1 (t=0.11)
+              </button>
+              <button type="button" class="leg-toggle active" id="toggle-best-l2" onclick="toggleRocItem('bestL2')" role="checkbox" aria-checked="true" title="แสดง/ซ่อน Best Dot Line 2 (t=0.05)">
+                <span class="leg-check-box">✓</span>
+                <span class="leg-dot red-dot"></span> Best Dot L2 (t=0.05)
               </button>
             </div>
           </div>
 
           <div class="svg-container">
-            <svg id="roc-svg" viewBox="0 0 500 450" class="roc-svg">
+            <svg id="roc-svg" viewBox="0 0 500 450" class="roc-svg" role="img" aria-label="Dual ROC Curves Comparison">
               <!-- Grid lines -->
               <line x1="50" y1="40" x2="470" y2="40" class="grid-line" />
               <line x1="50" y1="120" x2="470" y2="120" class="grid-line" />
@@ -195,39 +202,28 @@
               <line x1="50" y1="360" x2="470" y2="360" class="axis-line" />
 
               <!-- Diagonal Random Guess Line -->
-              <line x1="50" y1="360" x2="470" y2="40" class="random-line" stroke-dasharray="6,6" />
+              <line x1="50" y1="360" x2="470" y2="40" class="random-line" stroke-dasharray="6,6">
+                <title>Random Guess Baseline (AUC = 0.50)</title>
+              </line>
 
-              <!-- Two curved operating trails grow along each pipeline's ROC path -->
-              <path id="dynamic-guide-l1" class="dynamic-guide guide-line1" />
-              <path id="dynamic-guide-l2" class="dynamic-guide guide-line2" />
+              <!-- Two full ROC curves from (0,0) to (1,1) -->
+              <path id="dynamic-guide-l1" class="dynamic-guide guide-line1"
+                d="M 50.00 360.00 Q 50.00 296.00 50.01 224.00 Q 50.02 152.00 50.07 123.52 Q 50.13 95.04 50.46 82.54 Q 50.80 70.05 53.76 67.82 Q 56.72 65.60 65.96 64.00 Q 75.20 62.40 272.60 51.20 L 470.00 40.00">
+                <title>Line 1: Threshold (Raw a*) - Full ROC Curve (AUC = 0.9605)</title>
+              </path>
+              <path id="dynamic-guide-l2" class="dynamic-guide guide-line2"
+                d="M 50.00 360.00 Q 50.00 299.20 50.01 227.20 Q 50.01 155.20 50.05 125.44 Q 50.08 95.68 50.25 84.00 Q 50.42 72.32 51.47 69.47 Q 52.52 66.62 56.51 64.67 Q 60.50 62.72 265.25 51.36 L 470.00 40.00">
+                <title>Line 2: Morphology (Post-Proc) - Full ROC Curve (AUC = 0.9605)</title>
+              </path>
 
-              <!-- Permanent Best Operating Dots & Annotations -->
-              <g id="best-markers-group">
-                <!-- Glowing pulse rings -->
+              <!-- Best Dot Line 1 (Threshold t=0.11) -->
+              <g id="best-group-l1" class="best-group">
                 <circle cx="50.8" cy="70.0" class="svg-dot-pulse pulse-before" />
-                <circle cx="52.5" cy="66.6" class="svg-dot-pulse pulse-after" />
-
-                <!-- Leader lines to labels -->
-                <path d="M 52.5 66.6 L 85 66.6 L 105 58" class="best-leader leader-l2" />
                 <path d="M 50.8 70.0 L 80 88 L 105 102" class="best-leader leader-l1" />
-
-                <!-- Best Dots: Permanently anchored on the curve -->
-                <circle id="best-marker-l1" cx="50.8" cy="70.0" r="6" class="svg-dot dot-before" onclick="updateRocSlider(0.11)">
-                  <title>⭐ จุดดีที่สุด Line 1 (Threshold t=0.11): FPR=0.002, TPR=0.906 (คลิกเพื่อเลือก)</title>
+                <circle id="best-marker-l1" cx="50.8" cy="70.0" r="6" class="svg-dot dot-before">
+                  <title>⭐ จุดดีที่สุด Line 1 (Threshold t=0.11): FPR=0.002, TPR=0.906, IoU=0.9016</title>
                 </circle>
-                <circle id="best-marker-l2" cx="52.5" cy="66.6" r="6" class="svg-dot dot-after" onclick="updateRocSlider(0.05)">
-                  <title>⭐ จุดดีที่สุด Line 2 (Morphology t=0.05): FPR=0.006, TPR=0.917 (คลิกเพื่อเลือก)</title>
-                </circle>
-
-                <!-- Best Labels / Badges inside SVG -->
-                <g class="best-badge-group badge-l2" onclick="updateRocSlider(0.05)">
-                  <rect x="105" y="44" width="165" height="28" rx="6" class="best-badge-rect rect-l2" />
-                  <circle cx="117" cy="58" r="4.5" fill="var(--accent-rose)" stroke="#fff" stroke-width="1.5" />
-                  <text x="128" y="56" class="best-badge-text-title">⭐ Best L2 (t = 0.05)</text>
-                  <text x="128" y="66" class="best-badge-text-sub">TPR 91.7% | FPR 0.6%</text>
-                </g>
-
-                <g class="best-badge-group badge-l1" onclick="updateRocSlider(0.11)">
+                <g class="best-badge-group badge-l1">
                   <rect x="105" y="88" width="165" height="28" rx="6" class="best-badge-rect rect-l1" />
                   <circle cx="117" cy="102" r="4.5" fill="var(--accent-amber)" stroke="#fff" stroke-width="1.5" />
                   <text x="128" y="100" class="best-badge-text-title">⭐ Best L1 (t = 0.11)</text>
@@ -235,10 +231,19 @@
                 </g>
               </g>
 
-              <!-- Dynamic Interactive Threshold Markers on Both Curves -->
-              <g id="dynamic-markers-group">
-                <circle id="dynamic-marker-l1" cx="50.8" cy="70.0" r="5" class="dynamic-dot-line1" />
-                <circle id="dynamic-marker-l2" cx="52.5" cy="66.6" r="5" class="dynamic-dot-line2" />
+              <!-- Best Dot Line 2 (Morphology t=0.05) -->
+              <g id="best-group-l2" class="best-group">
+                <circle cx="52.5" cy="66.6" class="svg-dot-pulse pulse-after" />
+                <path d="M 52.5 66.6 L 85 66.6 L 105 58" class="best-leader leader-l2" />
+                <circle id="best-marker-l2" cx="52.5" cy="66.6" r="6" class="svg-dot dot-after">
+                  <title>⭐ จุดดีที่สุด Line 2 (Morphology t=0.05): FPR=0.006, TPR=0.917, IoU=0.9026 (แชมป์)</title>
+                </circle>
+                <g class="best-badge-group badge-l2">
+                  <rect x="105" y="44" width="165" height="28" rx="6" class="best-badge-rect rect-l2" />
+                  <circle cx="117" cy="58" r="4.5" fill="var(--accent-rose)" stroke="#fff" stroke-width="1.5" />
+                  <text x="128" y="56" class="best-badge-text-title">⭐ Best L2 (t = 0.05)</text>
+                  <text x="128" y="66" class="best-badge-text-sub">TPR 91.7% | FPR 0.6%</text>
+                </g>
               </g>
 
               <!-- Axes Text -->
@@ -259,44 +264,47 @@
             </svg>
           </div>
 
-          <!-- Slider Simulator -->
-          <div class="slider-box">
-            <div class="slider-header">
-              <span>🕹️ จำลองเลื่อนค่า Threshold บนเส้นทั้งสอง:</span>
-              <strong id="slider-threshold-val">0.11</strong>
-            </div>
-            <input type="range" id="threshold-slider" min="0.00" max="1.00" step="0.01" value="0.11" oninput="updateRocSlider(this.value)" aria-label="Threshold ตั้งแต่ 0 ถึง 1">
-            <div class="slider-range-labels">
-              <span>0.00 (ตรวจจับมากที่สุด)</span>
-              <span>1.00 (เข้มงวดที่สุด)</span>
-            </div>
-            <div class="slider-presets-row">
-              <span class="preset-label">🎯 ดีดกลับไปจุดดีที่สุด:</span>
-              <div class="preset-btns-group">
-                <button type="button" class="btn-preset-snap snap-l2" onclick="updateRocSlider(0.05)" title="ดีด Slider ไปที่จุดที่ดีที่สุดของ Line 2 (Morphology)">
-                  ⭐ Best L2 (Morphology t=0.05)
-                </button>
-                <button type="button" class="btn-preset-snap snap-l1" onclick="updateRocSlider(0.11)" title="ดีด Slider ไปที่จุดที่ดีที่สุดของ Line 1 (Threshold)">
-                  ⭐ Best L1 (Threshold t=0.11)
-                </button>
+          <!-- ROC Curves Summary Info Box (Clean replacement without slider) -->
+          <div class="roc-summary-box">
+            <div class="roc-summary-item item-l1" id="stat-row-l1">
+              <div class="roc-summary-badge">
+                <span class="leg-line blue-line"></span>
+                <strong>Line 1: Threshold (Raw a*)</strong>
+                <span class="summary-auc-tag">AUC = 0.9605</span>
+              </div>
+              <div class="roc-summary-metrics">
+                <span class="summary-metric-pill">⭐ Best L1 (t = 0.11)</span>
+                <span>FPR = <strong>0.002</strong> (0.19%)</span>
+                <span>TPR = <strong>0.906</strong> (90.61%)</span>
+                <span>IoU = <strong>0.9016</strong></span>
               </div>
             </div>
-            <div class="slider-stats">
-              <span><span>Line 1 (Threshold):</span> <span>FPR = <strong id="sim-fpr-l1">0.002</strong> &nbsp;|&nbsp; TPR = <strong id="sim-tpr-l1">0.906</strong></span></span>
-              <span><span>Line 2 (Morphology):</span> <span>FPR = <strong id="sim-fpr-l2">0.006</strong> &nbsp;|&nbsp; TPR = <strong id="sim-tpr-l2">0.917</strong></span></span>
+
+            <div class="roc-summary-item item-l2" id="stat-row-l2">
+              <div class="roc-summary-badge">
+                <span class="leg-line green-line"></span>
+                <strong>Line 2: Morphology (Post-Proc)</strong>
+                <span class="summary-auc-tag">AUC = 0.9605</span>
+              </div>
+              <div class="roc-summary-metrics">
+                <span class="summary-metric-pill champion">⭐ Best L2 (t = 0.05)</span>
+                <span>FPR = <strong>0.006</strong> (0.60%)</span>
+                <span>TPR = <strong>0.917</strong> (91.68%)</span>
+                <span>IoU = <strong>0.9026</strong></span>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Explanations: two live ROC operating trails -->
+        <!-- Explanations: two full ROC operating curves -->
         <div class="roc-qa-card">
           <div class="qa-item highlight">
             <h4>⭐ จุดสีส้มและสีชมพู (2 Best Operating Dots) คืออะไร?</h4>
             <p>
-              คือ <strong>ตำแหน่งจุดการทำงานที่ดีที่สุด (Optimal Operating Points)</strong> ที่คำนวณได้จริงจากชุดทดสอบ (Test Set) ซึ่งถูกตรึงไว้บนกราฟอย่างถาวรเพื่อให้เปรียบเทียบได้ตลอดเวลา แม้จะเลื่อน Slider ไปที่ค่าอื่น:
+              คือ <strong>ตำแหน่งจุดการทำงานที่ดีที่สุด (Optimal Operating Points)</strong> ที่คำนวณได้จริงจากชุดทดสอบ (Test Set) ซึ่งถูกตรึงไว้บนกราฟอย่างถาวรเพื่อให้เปรียบเทียบได้ชัดเจน:
               <br>• <strong>จุดสีชมพู (Best Line 2: Morphology, t = 0.05):</strong> จุดแชมป์ของโปรเจกต์ ได้ค่า <strong>IoU = 0.9026, Dice = 0.9488, Recall = 91.68%</strong> (พิกัด FPR = 0.006, TPR = 0.917)
               <br>• <strong>จุดสีส้ม (Best Line 1: Threshold Only, t = 0.11):</strong> จุดที่ดีที่สุดก่อนทำ Morphology ได้ค่า <strong>IoU = 0.9016, Recall = 90.61%</strong> (พิกัด FPR = 0.002, TPR = 0.906)
-              <br><em>💡 คลิกที่จุดหรือกล่องป้าย Best บนกราฟ (หรือปุ่มลัดใต้ Slider) เพื่อดีดแถบเลื่อนกลับมาที่จุดดีที่สุดได้ทันที</em>
+              <br><em>💡 สามารถใช้ Checkbox ด้านบนเพื่อเปิด/ปิดแสดงผลจุดแต่ละจุดแยกจากกันได้อย่างอิสระ</em>
             </p>
           </div>
 
@@ -309,16 +317,20 @@
           </div>
 
           <div class="qa-item">
-            <h4>🎯 ทำไมเส้นทั้งสองจึงยืด–หดเมื่อเลื่อน Threshold?</h4>
+            <h4>📈 เส้นทั้งสองแสดงผลเต็มเส้น (Full Curves) อย่างไร?</h4>
             <p>
-              เส้นแสดงเฉพาะเส้นทางที่ระบบทำงานมาถึงค่า Threshold ปัจจุบัน เมื่อเลื่อนไปทาง <strong>0.00</strong> ระบบยอมรับพิกเซลมากขึ้น เส้นจึงยาวขึ้นไปทางมุมขวาบน และเมื่อเลื่อนไปทาง <strong>1.00</strong> ระบบเข้มงวดขึ้น เส้นจึงหดกลับเข้าหาจุดเริ่มต้น
+              ทั้งสองเส้นถูกแสดงผลเต็มเส้นตลอดช่วงการทำงาน (Full Range) ตั้งแต่ (0,0) ถึง (1,1) เพื่อให้เห็นพฤติกรรมความโค้งของทั้งระบบ Threshold และระบบ Morphology อย่างสมบูรณ์แบบโดยไม่ต้องใช้ Slider
             </p>
           </div>
 
           <div class="qa-item">
-            <h4>⚪ จุดกลมสองสีที่ปลายเส้นคืออะไร?</h4>
+            <h4>🔘 ปุ่ม Checkbox ทั้ง 4 ด้านบนควบคุมอะไรบ้าง?</h4>
             <p>
-              จุดสีฟ้าและสีเขียวคือ <strong>ตำแหน่ง FPR/TPR ปัจจุบัน</strong> ของ Threshold และ Morphology ตามลำดับ จุดทั้งสองจะเคลื่อนที่พร้อมกับปลายเส้น โดยตัวเลขพิกัดจริงแสดงอยู่ใต้ Slider
+              คุณสามารถคลิกเปิด–ปิดการแสดงผลได้แยกอิสระ 4 ส่วน:
+              <br>• <strong>Line 1 (สีน้ำเงิน):</strong> แสดง/ซ่อน เส้นกราฟ ROC ก่อนทำ Morphology
+              <br>• <strong>Line 2 (สีเขียว):</strong> แสดง/ซ่อน เส้นกราฟ ROC หลังทำ Morphology
+              <br>• <strong>Best Dot L1 (สีส้ม):</strong> แสดง/ซ่อน จุดทำงานที่ดีที่สุดของ Line 1 (t = 0.11)
+              <br>• <strong>Best Dot L2 (สีชมพู):</strong> แสดง/ซ่อน จุดทำงานที่ดีที่สุดของ Line 2 (t = 0.05)
             </p>
           </div>
 

@@ -101,39 +101,66 @@ const MORPH_OPERATING_POINTS = [
 let currentStage = 'before';
 let currentCell = 'TN';
 
-// Visibility state for ROC line toggles
-const rocVisibility = { l1: true, l2: true, best: true };
+// Visibility state for ROC elements
+const rocVisibility = {
+  l1: true,
+  l2: true,
+  bestL1: true,
+  bestL2: true
+};
+
+function toggleRocItem(key) {
+  rocVisibility[key] = !rocVisibility[key];
+  const btnId = key === 'bestL1' ? 'toggle-best-l1' : key === 'bestL2' ? 'toggle-best-l2' : 'toggle-' + key;
+  const btn = document.getElementById(btnId);
+  if (btn) {
+    btn.classList.toggle('active', rocVisibility[key]);
+    btn.setAttribute('aria-checked', rocVisibility[key] ? 'true' : 'false');
+  }
+  applyRocVisibility();
+}
 
 function toggleRocLine(key) {
-  rocVisibility[key] = !rocVisibility[key];
-  const btn = document.getElementById('toggle-' + key);
-  if (btn) btn.classList.toggle('active', rocVisibility[key]);
-  applyRocVisibility();
+  if (key === 'best') {
+    const nextState = !(rocVisibility.bestL1 && rocVisibility.bestL2);
+    rocVisibility.bestL1 = nextState;
+    rocVisibility.bestL2 = nextState;
+    ['bestL1', 'bestL2'].forEach(k => {
+      const btn = document.getElementById(k === 'bestL1' ? 'toggle-best-l1' : 'toggle-best-l2');
+      if (btn) {
+        btn.classList.toggle('active', nextState);
+        btn.setAttribute('aria-checked', nextState ? 'true' : 'false');
+      }
+    });
+    applyRocVisibility();
+  } else {
+    toggleRocItem(key);
+  }
 }
 
 function applyRocVisibility() {
   // Line 1 elements
-  const l1Els = [
-    document.getElementById('dynamic-guide-l1'),
-    document.getElementById('dynamic-marker-l1'),
-  ];
-  l1Els.forEach(el => { if (el) el.style.display = rocVisibility.l1 ? '' : 'none'; });
+  const l1El = document.getElementById('dynamic-guide-l1');
+  if (l1El) l1El.style.display = rocVisibility.l1 ? '' : 'none';
 
   // Line 2 elements
-  const l2Els = [
-    document.getElementById('dynamic-guide-l2'),
-    document.getElementById('dynamic-marker-l2'),
-  ];
-  l2Els.forEach(el => { if (el) el.style.display = rocVisibility.l2 ? '' : 'none'; });
+  const l2El = document.getElementById('dynamic-guide-l2');
+  if (l2El) l2El.style.display = rocVisibility.l2 ? '' : 'none';
 
-  // Best dots group
-  const bestGroup = document.getElementById('best-markers-group');
-  if (bestGroup) bestGroup.style.display = rocVisibility.best ? '' : 'none';
+  // Best Dot Line 1 group
+  const bestL1El = document.getElementById('best-group-l1');
+  if (bestL1El) bestL1El.style.display = rocVisibility.bestL1 ? '' : 'none';
 
-  // Also hide/show the corresponding slider stats rows
-  const statRows = document.querySelectorAll('.slider-stats > span');
-  if (statRows[0]) statRows[0].style.display = rocVisibility.l1 ? '' : 'none';
-  if (statRows[1]) statRows[1].style.display = rocVisibility.l2 ? '' : 'none';
+  // Best Dot Line 2 group
+  const bestL2El = document.getElementById('best-group-l2');
+  if (bestL2El) bestL2El.style.display = rocVisibility.bestL2 ? '' : 'none';
+
+  // Summary box stat rows
+  const statL1 = document.getElementById('stat-row-l1');
+  if (statL1) statL1.style.opacity = rocVisibility.l1 ? '1' : '0.35';
+
+  const statL2 = document.getElementById('stat-row-l2');
+  if (statL2) statL2.style.opacity = rocVisibility.l2 ? '1' : '0.35';
 }
 
 function buildSmoothRocPath(points, toX, toY) {
@@ -154,12 +181,37 @@ function buildSmoothRocPath(points, toX, toY) {
   return path;
 }
 
+function initRocCurves() {
+  const toX = fpr => 50 + fpr * 420;
+  const toY = tpr => 360 - tpr * 320;
+
+  const rawDescending = [...RAW_OPERATING_POINTS].sort((a, b) => b.threshold - a.threshold);
+  const rawTrail = [{fpr: 0, tpr: 0}];
+  rawDescending.forEach(p => {
+    if (p.fpr > 0 || p.tpr > 0) rawTrail.push({fpr: p.fpr, tpr: p.tpr});
+  });
+
+  const morphDescending = [...MORPH_OPERATING_POINTS].sort((a, b) => b.threshold - a.threshold);
+  const morphTrail = [{fpr: 0, tpr: 0}];
+  morphDescending.forEach(p => {
+    if (p.fpr > 0 || p.tpr > 0) morphTrail.push({fpr: p.fpr, tpr: p.tpr});
+  });
+
+  const guide1 = document.getElementById('dynamic-guide-l1');
+  if (guide1) guide1.setAttribute('d', buildSmoothRocPath(rawTrail, toX, toY));
+
+  const guide2 = document.getElementById('dynamic-guide-l2');
+  if (guide2) guide2.setAttribute('d', buildSmoothRocPath(morphTrail, toX, toY));
+
+  applyRocVisibility();
+}
+
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
   setStage('before');
   selectCell('TN');
   updateGraySlider(128);
-  updateRocSlider(0.11);
+  initRocCurves();
   if (SCORE_DISTRIBUTION) {
     document.getElementById('distribution-pixel-count').textContent = (
       SCORE_DISTRIBUTION.background_total + SCORE_DISTRIBUTION.foreground_total
@@ -292,55 +344,11 @@ function buildOperatingTrail(threshold, points, toX, toY) {
   return buildSmoothRocPath(trail, toX, toY);
 }
 
-// ROC Dual Curve Simulation Slider
+// ROC Dual Curve Simulation Slider (Retained as safe no-op stub)
 function updateRocSlider(thresholdVal) {
-  const t = Math.max(0.00, Math.min(1.00, parseFloat(thresholdVal)));
-  const slider = document.getElementById('threshold-slider');
-  if (slider) slider.value = t.toFixed(2);
-  document.getElementById('slider-threshold-val').textContent = t.toFixed(2);
-
-  const rawPoint = interpolateOperatingPoint(t, RAW_OPERATING_POINTS);
-  const morphPoint = interpolateOperatingPoint(t, MORPH_OPERATING_POINTS);
-  const {fpr: fpr1, tpr: tpr1} = rawPoint;
-  const {fpr: fpr2, tpr: tpr2} = morphPoint;
-
-  document.getElementById('sim-fpr-l1').textContent = fpr1.toFixed(3);
-  document.getElementById('sim-tpr-l1').textContent = tpr1.toFixed(3);
-  document.getElementById('sim-fpr-l2').textContent = fpr2.toFixed(3);
-  document.getElementById('sim-tpr-l2').textContent = tpr2.toFixed(3);
-
-  // SVG coordinate mapping
-  const toX = fpr => 50 + fpr * 420;
-  const toY = tpr => 360 - tpr * 320;
-
-  const m1 = document.getElementById('dynamic-marker-l1');
-  if (m1) {
-    m1.setAttribute('cx', toX(fpr1));
-    m1.setAttribute('cy', toY(tpr1));
-  }
-
-  const m2 = document.getElementById('dynamic-marker-l2');
-  if (m2) {
-    m2.setAttribute('cx', toX(fpr2));
-    m2.setAttribute('cy', toY(tpr2));
-  }
-
-  const guide1 = document.getElementById('dynamic-guide-l1');
-  if (guide1) {
-    guide1.setAttribute('d', buildOperatingTrail(t, RAW_OPERATING_POINTS, toX, toY));
-  }
-
-  const guide2 = document.getElementById('dynamic-guide-l2');
-  if (guide2) {
-    guide2.setAttribute('d', buildOperatingTrail(t, MORPH_OPERATING_POINTS, toX, toY));
-  }
-
-  // Update preset buttons active highlight
-  const snapL2 = document.querySelector('.snap-l2');
-  const snapL1 = document.querySelector('.snap-l1');
-  if (snapL2) snapL2.classList.toggle('active', Math.abs(t - 0.05) < 0.005);
-  if (snapL1) snapL1.classList.toggle('active', Math.abs(t - 0.11) < 0.005);
+  // Slider removed as full curves are permanently rendered
 }
+
 
 // Independent distribution control: this deliberately does not update the ROC slider.
 function updateDistributionSlider(thresholdVal) {

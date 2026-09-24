@@ -19,6 +19,7 @@
   "distance_scale": 20.0,
   "ignored_trimap_label": 3,
   "evaluated_pixels": 2381327,
+  "score_distribution_bins": 1000,
   "auc_threshold_line": 0.9604518318554849,
   "auc_morphology_line": 0.9604671134376561,
   "best_dot_threshold": {

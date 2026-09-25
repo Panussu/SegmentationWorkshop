@@ -5,6 +5,7 @@
 """รันการทดลองทั้งหมด: ปรับ threshold -> ทดสอบ -> บันทึกผลและกราฟ."""
 # นำเข้า Path สำหรับสร้างและจัดการพาธไฟล์
 from pathlib import Path
+import base64
 # นำเข้า argparse สำหรับจัดการพารามิเตอร์ผ่าน Command line
 import argparse
 # นำเข้า csv สำหรับเขียนผลประเมินแยกตามรูปภาพ
@@ -456,6 +457,28 @@ def main(args=None):
             encoding="utf-8",
         )
 
+        preview_rgb, _, _, preview_score = test_samples[0]
+        preview_rgb_u8 = np.ascontiguousarray(preview_rgb, dtype=np.uint8)
+        preview_score_f32 = np.ascontiguousarray(preview_score, dtype="<f4")
+        preview_kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (args.kernel_size, args.kernel_size)
+        )
+        preview_data = {
+            "sample": split["test"][0],
+            "width": int(preview_score.shape[1]),
+            "height": int(preview_score.shape[0]),
+            "kernel_size": int(args.kernel_size),
+            "kernel": preview_kernel.astype(int).tolist(),
+            "rgb_u8_base64": base64.b64encode(preview_rgb_u8.tobytes()).decode("ascii"),
+            "score_f32_base64": base64.b64encode(preview_score_f32.tobytes()).decode("ascii"),
+        }
+        (web_assets_dir / "process_preview.js").write_text(
+            "window.PROCESS_PREVIEW_DATA="
+            + json.dumps(preview_data, ensure_ascii=False, separators=(",", ":"))
+            + ";\n",
+            encoding="utf-8",
+        )
+
     with (out_dir / "per_image.csv").open("w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=list(rows[0]))
         writer.writeheader()
@@ -496,57 +519,96 @@ def main(args=None):
     # -------------------------------------------------------------------------
     # ส่วนที่ 6.5: การสร้าง Dual ROC Curves พร้อม 2 Best Dots และ Dots ทุก 0.02 FPR
     # -------------------------------------------------------------------------
-    fig, ax = plt.subplots(figsize=(8.5, 7.5))
-    # Line 1: Threshold ROC curve
-    ax.plot(fpr_thresh, tpr_thresh, color="#1f77b4", linewidth=2.4, label=f"Line 1: Threshold Curve (Raw a* Score, AUC = {auc_thresh:.3f})")
-    # Line 2: Morphology ROC curve
-    ax.plot(fpr_morph, tpr_morph, color="#2ca02c", linewidth=2.4, label=f"Line 2: Morphology Curve (Opening & Closing, AUC = {auc_morph:.3f})")
-    # Random guess baseline
-    ax.plot([0, 1], [0, 1], "--", color="gray", linewidth=1.5, label="Random Guess Baseline (AUC = 0.500)")
+    raw_thresholds_exact = np.asarray(score_distribution["raw_curve"]["thresholds"])
+    raw_fpr_exact = np.asarray(score_distribution["raw_curve"]["fpr"])
+    raw_tpr_exact = np.asarray(score_distribution["raw_curve"]["tpr"])
+    morph_thresholds_exact = np.asarray(score_distribution["morphology_curve"]["thresholds"])
+    morph_fpr_exact = np.asarray(score_distribution["morphology_curve"]["fpr"])
+    morph_tpr_exact = np.asarray(score_distribution["morphology_curve"]["tpr"])
 
-    # Sampled Dots every 0.02 FPR
-    ax.scatter(target_fprs, dots_thresh_tpr, color="#1f77b4", s=25, alpha=0.85, zorder=4, label="Line 1 Dots (Every 0.02 FPR)")
-    ax.scatter(target_fprs, dots_morph_tpr, color="#2ca02c", s=25, alpha=0.85, zorder=4, label="Line 2 Dots (Every 0.02 FPR)")
+    # Follow the actual threshold process from high score to low score.
+    raw_order = np.argsort(raw_thresholds_exact)[::-1]
+    morph_order = np.argsort(morph_thresholds_exact)[::-1]
+    raw_x, raw_y = raw_fpr_exact[raw_order], raw_tpr_exact[raw_order]
+    morph_x, morph_y = morph_fpr_exact[morph_order], morph_tpr_exact[morph_order]
+    # Regenerate roc_curve.png in the original light style: one full-range
+    # process plot, no zoom panel, no intermediate dot markers.
+    fig, ax = plt.subplots(figsize=(10.5, 7.2))
 
-    # 2 Best Operating Dots
-    ax.scatter([fpr_best_thresh], [tpr_best_thresh], color="#ff7f0e", marker="o", s=130, edgecolors="black", linewidths=1.5, zorder=6, label=f"Best Dot Line 1 (Threshold = {threshold_before:.2f})")
-    ax.scatter([fpr_best_morph], [tpr_best_morph], color="#e11d48", marker="o", s=130, edgecolors="black", linewidths=1.5, zorder=6, label=f"Best Dot Line 2 (Morphology = {threshold_after:.2f})")
+    def web_smooth_process_curve(x_values, y_values, samples_per_segment=18):
+        """Match the Catmull-Rom-to-Bezier process curve used by the web SVG."""
+        points = np.column_stack((x_values, y_values)).astype(float)
+        if len(points) < 2:
+            return points[:, 0], points[:, 1]
+        alpha = 0.35
+        curve = []
+        for index in range(len(points) - 1):
+            p0 = points[index - 1] if index > 0 else points[index]
+            p1 = points[index]
+            p2 = points[index + 1]
+            p3 = points[index + 2] if index + 2 < len(points) else p2
+            c1 = p1 + (p2 - p0) * alpha / 3.0
+            c2 = p2 - (p3 - p1) * alpha / 3.0
+            endpoint = index == len(points) - 2
+            for step in range(samples_per_segment + int(endpoint)):
+                t = step / samples_per_segment
+                omt = 1.0 - t
+                curve.append(
+                    omt**3 * p1
+                    + 3.0 * omt**2 * t * c1
+                    + 3.0 * omt * t**2 * c2
+                    + t**3 * p2
+                )
+        curve = np.asarray(curve)
+        return curve[:, 0], curve[:, 1]
 
-    # Annotations for 2 Best Dots
-    ax.annotate(
-        f"Best Morphology Dot\n(t={threshold_after:.2f}, FPR={fpr_best_morph:.3f}, TPR={tpr_best_morph:.3f})",
-        xy=(fpr_best_morph, tpr_best_morph),
-        xytext=(0.10, 0.88),
-        arrowprops=dict(facecolor="#e11d48", edgecolor="#e11d48", shrink=0.08, width=1.5, headwidth=6),
-        fontsize=9,
-        fontweight="bold",
-        bbox=dict(boxstyle="round,pad=0.4", fc="#ffebee", ec="#e11d48", lw=1.3),
-        zorder=7
+    raw_process_x, raw_process_y = web_smooth_process_curve(raw_x, raw_y)
+    morph_process_x, morph_process_y = web_smooth_process_curve(morph_x, morph_y)
+    ax.plot(
+        raw_process_x, raw_process_y, color="#38bdf8", linewidth=2.6,
+        solid_capstyle="round", solid_joinstyle="round",
+        label=f"Line 1: Threshold (Raw a*) - process (AUC={auc_thresh:.4f})",
+        zorder=3,
     )
-    ax.annotate(
-        f"Best Threshold Dot\n(t={threshold_before:.2f}, FPR={fpr_best_thresh:.3f}, TPR={tpr_best_thresh:.3f})",
-        xy=(fpr_best_thresh, tpr_best_thresh),
-        xytext=(0.28, 0.65),
-        arrowprops=dict(facecolor="#ff7f0e", edgecolor="#ff7f0e", shrink=0.08, width=1.5, headwidth=6),
-        fontsize=9,
-        fontweight="bold",
-        bbox=dict(boxstyle="round,pad=0.4", fc="#fff8e1", ec="#ff7f0e", lw=1.3),
-        zorder=7
+    ax.plot(
+        morph_process_x, morph_process_y, color="#20c997", linewidth=2.6,
+        linestyle="--", dash_capstyle="round", dash_joinstyle="round",
+        label=f"Line 2: Morphology (Post-Proc) - process (AUC={auc_morph:.4f})",
+        zorder=4,
+    )
+    ax.scatter(
+        [fpr_best_thresh], [tpr_best_thresh], color="#f59e0b", marker="o",
+        s=125, edgecolors="white", linewidths=1.6, zorder=7,
+        label=f"Best Raw t={threshold_before:.2f}",
+    )
+    ax.scatter(
+        [fpr_best_morph], [tpr_best_morph], color="#e11d48", marker="o",
+        s=125, edgecolors="white", linewidths=1.6, zorder=8,
+        label=f"Best Morphology t={threshold_after:.2f}",
     )
 
+    ax.plot(
+        [0, 1], [0, 1], "--", color="#64748b", linewidth=1.4,
+        label="Random guess (AUC=0.5000)", zorder=1,
+    )
     ax.set(
-        xlabel="False Positive Rate (FPR = FP / [FP + TN])",
-        ylabel="True Positive Rate (TPR / Recall = TP / [TP + FN])",
-        title="Test Pixels: Dual ROC Curves & 0.02 FPR Operating Points (Red Apples Dataset)",
-        xlim=(-0.02, 1.02),
-        ylim=(-0.02, 1.05)
+        xlabel="False Positive Rate (FPR)",
+        ylabel="True Positive Rate (TPR / Recall)",
+        title="Test Pixels: Raw Threshold vs Morphology Process",
+        xlim=(-0.015, 1.015),
+        ylim=(-0.015, 1.025),
     )
-    ax.grid(True, linestyle=":", alpha=0.6)
-    ax.legend(loc="lower right", framealpha=0.95, fontsize=9.0)
-    fig.tight_layout()
-    fig.savefig(out_dir / "roc_curve.png", dpi=160, bbox_inches="tight")
-    plt.close(fig)
+    ax.set_xticks([0, 0.25, 0.50, 0.75, 1.0])
+    ax.set_yticks([0, 0.25, 0.50, 0.75, 1.0])
+    ax.grid(which="major", linestyle="--", linewidth=0.7, alpha=0.42)
+    ax.set_axisbelow(True)
+    ax.legend(loc="lower right", framealpha=0.96, fontsize=8.5)
 
+    fig.tight_layout()
+    fig.savefig(out_dir / "roc_curve.png", dpi=300, bbox_inches="tight")
+    if web_assets_dir.exists():
+        fig.savefig(web_assets_dir / "roc_curve.png", dpi=300, bbox_inches="tight")
+    plt.close(fig)
     # -------------------------------------------------------------------------
     # ส่วนที่ 6.6: การสร้างรายงานสรุปผลรูปแบบ Markdown
     # -------------------------------------------------------------------------

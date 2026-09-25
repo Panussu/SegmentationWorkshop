@@ -156,7 +156,7 @@
       <div class="section-header">
         <div class="title-with-pill">
           <span class="pill">Section 2</span>
-          <h3>ROC Curve: เส้น Threshold และ Morphology แสดงเต็มเส้น (Full ROC Curves)</h3>
+          <h3>ROC Curve: เส้น Threshold และ Morphology ตามลำดับการทำงาน</h3>
         </div>
       </div>
 
@@ -165,7 +165,7 @@
         <div class="roc-plot-card">
           <div class="plot-topbar">
             <div class="plot-title-stack">
-              <span>Test Pixels: ROC Curves (Full Range)</span>
+              <span>Test Pixels: Live ROC Operating Trails</span>
               <small id="roc-resolution-label">กำลังโหลดจุด ROC จริง…</small>
             </div>
             <div class="plot-legend" role="group" aria-label="ROC Curve Controls">
@@ -209,7 +209,7 @@
                 <title>Random Guess Baseline (AUC = 0.50)</title>
               </line>
 
-              <!-- Two full ROC curves from (0,0) to (1,1) -->
+              <!-- Two live ROC trails that grow through processed threshold points -->
               <path id="dynamic-guide-l1" class="dynamic-guide guide-line1"
                 d="M 50.00 360.00 Q 50.00 296.00 50.01 224.00 Q 50.02 152.00 50.07 123.52 Q 50.13 95.04 50.46 82.54 Q 50.80 70.05 53.76 67.82 Q 56.72 65.60 65.96 64.00 Q 75.20 62.40 272.60 51.20 L 470.00 40.00">
                 <title>Line 1: Threshold (Raw a*) - Full ROC Curve (AUC = 0.9605)</title>
@@ -225,10 +225,10 @@
               <g id="best-group-l1" class="best-group">
                 <circle cx="50.8" cy="70.0" class="svg-dot-pulse pulse-before" />
                 <path d="M 50.8 70.0 L 80 88 L 105 102" class="best-leader leader-l1" />
-                <circle id="best-marker-l1" cx="50.8" cy="70.0" r="6" class="svg-dot dot-before">
+                <circle id="best-marker-l1" cx="50.8" cy="70.0" r="6" class="svg-dot dot-before" onclick="updateRocSlider(0.11)">
                   <title>⭐ จุดดีที่สุด Line 1 (Threshold t=0.11): FPR=0.002, TPR=0.906, IoU=0.9016</title>
                 </circle>
-                <g class="best-badge-group badge-l1">
+                <g class="best-badge-group badge-l1" onclick="updateRocSlider(0.11)">
                   <rect x="105" y="88" width="165" height="28" rx="6" class="best-badge-rect rect-l1" />
                   <circle cx="117" cy="102" r="4.5" fill="var(--accent-amber)" stroke="#fff" stroke-width="1.5" />
                   <text x="128" y="100" class="best-badge-text-title">⭐ Best L1 (t = 0.11)</text>
@@ -240,15 +240,35 @@
               <g id="best-group-l2" class="best-group">
                 <circle cx="52.5" cy="66.6" class="svg-dot-pulse pulse-after" />
                 <path d="M 52.5 66.6 L 85 66.6 L 105 58" class="best-leader leader-l2" />
-                <circle id="best-marker-l2" cx="52.5" cy="66.6" r="6" class="svg-dot dot-after">
+                <circle id="best-marker-l2" cx="52.5" cy="66.6" r="6" class="svg-dot dot-after" onclick="updateRocSlider(0.05)">
                   <title>⭐ จุดดีที่สุด Line 2 (Morphology t=0.05): FPR=0.006, TPR=0.917, IoU=0.9026 (แชมป์)</title>
                 </circle>
-                <g class="best-badge-group badge-l2">
+                <g class="best-badge-group badge-l2" onclick="updateRocSlider(0.05)">
                   <rect x="105" y="44" width="165" height="28" rx="6" class="best-badge-rect rect-l2" />
                   <circle cx="117" cy="58" r="4.5" fill="var(--accent-rose)" stroke="#fff" stroke-width="1.5" />
                   <text x="128" y="56" class="best-badge-text-title">⭐ Best L2 (t = 0.05)</text>
                   <text x="128" y="66" class="best-badge-text-sub">TPR 91.7% | FPR 0.6%</text>
                 </g>
+              </g>
+
+              <!-- Operating Projection Crosshair Lines (Matching Textbook ROC Illustration) -->
+              <g id="roc-projection-group" class="roc-projection-group">
+                <line id="roc-proj-x" x1="52.5" y1="66.6" x2="52.5" y2="360" class="roc-proj-line" />
+                <line id="roc-proj-y" x1="52.5" y1="66.6" x2="50" y2="66.6" class="roc-proj-line" />
+                <g id="roc-proj-x-tag" transform="translate(52.5, 360)">
+                  <rect x="-35" y="3" width="70" height="18" rx="4" class="roc-proj-tag-bg" />
+                  <text id="roc-proj-x-val" x="0" y="15" class="roc-proj-tag-text" text-anchor="middle">FPRₐ 0.60%</text>
+                </g>
+                <g id="roc-proj-y-tag" transform="translate(50, 66.6)">
+                  <rect x="-70" y="-9" width="65" height="18" rx="4" class="roc-proj-tag-bg" />
+                  <text id="roc-proj-y-val" x="-4" y="4" class="roc-proj-tag-text" text-anchor="end">TPRₐ 91.68%</text>
+                </g>
+                <circle id="roc-active-marker-l1" cx="50.8" cy="70.0" r="5.5" class="roc-active-dot raw-active-dot">
+                  <title>Current Raw Threshold operating point</title>
+                </circle>
+                <circle id="roc-active-marker-l2" cx="52.5" cy="66.6" r="5.5" class="roc-active-dot morph-active-dot">
+                  <title>Current Morphology operating point</title>
+                </circle>
               </g>
 
               <!-- Axes Text -->
@@ -267,6 +287,66 @@
               <text x="40" y="124" class="tick-text" text-anchor="end">0.75</text>
               <text x="40" y="44" class="tick-text" text-anchor="end">1.0</text>
             </svg>
+            <div class="roc-zoom-controls" role="group" aria-label="ROC zoom controls">
+              <button type="button" onclick="zoomRocGraph(0.8)" aria-label="Zoom in" title="Zoom in">+</button>
+              <button type="button" onclick="zoomRocGraph(1.25)" aria-label="Zoom out" title="Zoom out">-</button>
+              <button type="button" class="roc-zoom-reset" onclick="resetRocZoom()" aria-label="Reset zoom">Reset</button>
+              <output id="roc-zoom-level" aria-live="polite">100%</output>
+            </div>
+            <div class="roc-zoom-hint">Mouse wheel: zoom | Drag: pan | Double-click: reset</div>
+
+          </div>
+
+          <div class="roc-process-control" aria-label="ควบคุมลำดับการทำงานของ ROC">
+            <div class="roc-process-heading">
+              <div>
+                <strong>เลื่อนดู Process ทีละ Threshold</strong>
+                <span id="roc-process-step">Step 1 / 57</span>
+              </div>
+              <label class="roc-process-number"><span>t =</span><input type="number" id="roc-process-threshold" min="0" max="1" step="0.001" value="0.110000" onchange="updateRocProcessThreshold(this.value)" aria-label="กรอกค่า Threshold ของ ROC"></label>
+            </div>
+            <div class="roc-process-slider-row">
+              <button type="button" onclick="stepRocProcess(-1)" aria-label="ขั้นก่อนหน้า">−</button>
+              <input type="range" id="roc-process-slider" min="0" max="1" step="0.001" value="0.110" oninput="updateRocProcessThreshold(this.value)" aria-label="Threshold ของ ROC ตั้งแต่ 0.000 ถึง 1.000">
+              <button type="button" onclick="stepRocProcess(1)" aria-label="ขั้นถัดไป">+</button>
+            </div>
+            <div class="roc-process-live-stats" aria-live="polite">
+              <span class="raw-stat">Raw: FPR <strong id="roc-live-raw-fpr">0.000000</strong> · TPR <strong id="roc-live-raw-tpr">0.000000</strong></span>
+              <span class="morph-stat">Morphology: FPR <strong id="roc-live-morph-fpr">0.000000</strong> · TPR <strong id="roc-live-morph-tpr">0.000000</strong></span>
+            </div>
+          </div>
+
+          <div class="process-preview-panel">
+            <div class="process-preview-heading">
+              <div>
+                <strong>ภาพตัวอย่างตาม Process จริง</strong>
+                <span id="process-preview-sample">กำลังโหลดภาพตัวอย่าง…</span>
+              </div>
+              <span>Kernel 3×3</span>
+            </div>
+            <div class="process-preview-grid">
+              <figure>
+                <canvas id="process-canvas-input" width="256" height="171"></canvas>
+                <figcaption><b>1</b> ภาพต้นฉบับ</figcaption>
+              </figure>
+              <figure>
+                <canvas id="process-canvas-raw" width="256" height="171"></canvas>
+                <figcaption><b>2</b> Threshold Mask</figcaption>
+              </figure>
+              <figure>
+                <canvas id="process-canvas-open" width="256" height="171"></canvas>
+                <figcaption><b>3</b> Opening ลบ Noise</figcaption>
+              </figure>
+              <figure>
+                <canvas id="process-canvas-close" width="256" height="171"></canvas>
+                <figcaption><b>4</b> Closing เติมช่องว่าง</figcaption>
+              </figure>
+              <figure>
+                <canvas id="process-canvas-cutout" width="256" height="171"></canvas>
+                <figcaption><b>5</b> Cutout ผลลัพธ์</figcaption>
+              </figure>
+            </div>
+            <p class="process-preview-counts" id="process-preview-counts">เลื่อน Threshold เพื่อดูการเปลี่ยนแปลงของแต่ละขั้นตอน</p>
           </div>
 
           <!-- ROC Curves Summary Info Box (Clean replacement without slider) -->
@@ -322,9 +402,9 @@
           </div>
 
           <div class="qa-item">
-            <h4>📈 เส้นทั้งสองแสดงผลเต็มเส้น (Full Curves) อย่างไร?</h4>
+            <h4>📈 Slider แสดงลำดับของเส้น ROC อย่างไร?</h4>
             <p>
-              ทั้งสองเส้นถูกแสดงผลเต็มเส้นตลอดช่วงการทำงาน (Full Range) ตั้งแต่ (0,0) ถึง (1,1) เพื่อให้เห็นพฤติกรรมความโค้งของทั้งระบบ Threshold และระบบ Morphology อย่างสมบูรณ์แบบโดยไม่ต้องใช้ Slider
+              เมื่อเลื่อน Slider ระบบจะลด Threshold ตามค่าคะแนนจริงทีละระดับ แล้วต่อเส้น Raw และ Morphology จาก (0,0) ไปถึงจุด FPR/TPR ปัจจุบัน ภาพตัวอย่างทั้ง 5 ขั้นจะเปลี่ยนพร้อมกันเพื่อแสดงผลของ Threshold, Opening, Closing และ Cutout ในระดับเดียวกัน
             </p>
           </div>
 
@@ -634,9 +714,9 @@
         </div>
 
         <div class="gallery-item">
-          <h4>📈 Dual ROC Curves & 2 Best Dots & 0.02 FPR Sampling (AUC = 0.9605)</h4>
+          <h4>📈 Exact Dual ROC Curves — ครบทุก Threshold และมุมมองขยาย (AUC = 0.9605)</h4>
           <img src="assets/roc_curve.png" alt="ROC Curve" class="gallery-img">
-          <p class="gallery-caption">กราฟ ROC แสดง 2 เส้น (Line 1: Threshold สีน้ำเงิน AUC=0.9605, Line 2: Morphology สีเขียว AUC=0.9605) พร้อม 2 Best Dots และจุดตัวอย่างทุกๆ 0.02 FPR รวม 51 จุดต่อเส้น</p>
+          <p class="gallery-caption">กราฟ ROC แบบขั้นบันไดจากขอบเขตคะแนนจริงครบทั้ง 57 ระดับ แสดงเส้น Raw และ Morphology พร้อมจุด Best และกราฟขยายบริเวณมุมซ้ายบน โดยไม่มีการแทรกค่าหรือตัด intermediate points</p>
         </div>
 
         <div class="gallery-item full-width">
@@ -653,6 +733,7 @@
   </footer>
 
   <script src="assets/score_distribution.js"></script>
+  <script src="assets/process_preview.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

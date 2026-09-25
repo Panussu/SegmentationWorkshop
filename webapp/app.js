@@ -32,6 +32,17 @@ const DATA = {
 };
 
 const SCORE_DISTRIBUTION = window.SCORE_DISTRIBUTION_DATA || null;
+const PROCESS_PREVIEW = window.PROCESS_PREVIEW_DATA || null;
+
+let rocRawTrail = [];
+let rocMorphTrail = [];
+let currentRocProcessIndex = 0;
+let currentRocThreshold = 0.11;
+let processPreviewScores = null;
+let processPreviewRgb = null;
+const ROC_VIEWBOX = {x: 0, y: 0, width: 500, height: 450};
+let rocView = {...ROC_VIEWBOX};
+let rocPan = null;
 
 const CELL_DETAILS = {
   TN: {
@@ -118,6 +129,9 @@ function toggleRocItem(key) {
     btn.setAttribute('aria-checked', rocVisibility[key] ? 'true' : 'false');
   }
   applyRocVisibility();
+  if (key === 'l1' || key === 'l2') {
+    updateRocProcess(currentRocProcessIndex, currentRocThreshold);
+  }
 }
 
 function toggleRocLine(key) {
@@ -144,20 +158,35 @@ function applyRocVisibility() {
   if (l1El) l1El.style.display = rocVisibility.l1 ? '' : 'none';
   const l1Points = document.getElementById('roc-points-l1');
   if (l1Points) l1Points.style.display = rocVisibility.l1 ? '' : 'none';
+  if (zoomL1) zoomL1.style.display = rocVisibility.l1 ? '' : 'none';
+  if (zoomL1Points) zoomL1Points.style.display = rocVisibility.l1 ? '' : 'none';
 
   // Line 2 elements
   const l2El = document.getElementById('dynamic-guide-l2');
   if (l2El) l2El.style.display = rocVisibility.l2 ? '' : 'none';
   const l2Points = document.getElementById('roc-points-l2');
   if (l2Points) l2Points.style.display = rocVisibility.l2 ? '' : 'none';
+  if (zoomL2) zoomL2.style.display = rocVisibility.l2 ? '' : 'none';
+  if (zoomL2Points) zoomL2Points.style.display = rocVisibility.l2 ? '' : 'none';
 
   // Best Dot Line 1 group
   const bestL1El = document.getElementById('best-group-l1');
   if (bestL1El) bestL1El.style.display = rocVisibility.bestL1 ? '' : 'none';
+  if (zoomBestL1) zoomBestL1.style.display = rocVisibility.bestL1 ? '' : 'none';
 
   // Best Dot Line 2 group
   const bestL2El = document.getElementById('best-group-l2');
   if (bestL2El) bestL2El.style.display = rocVisibility.bestL2 ? '' : 'none';
+  if (zoomBestL2) zoomBestL2.style.display = rocVisibility.bestL2 ? '' : 'none';
+
+  // Projection Crosshair Lines (visible if at least one line is visible)
+  const projEl = document.getElementById('roc-projection-group');
+  if (projEl) projEl.style.display = (rocVisibility.l1 || rocVisibility.l2) ? '' : 'none';
+  const rawActiveDot = document.getElementById('roc-active-marker-l1');
+  if (rawActiveDot) rawActiveDot.style.display = rocVisibility.l1 ? '' : 'none';
+  const morphActiveDot = document.getElementById('roc-active-marker-l2');
+  if (morphActiveDot) morphActiveDot.style.display = rocVisibility.l2 ? '' : 'none';
+  if (zoomProjEl) zoomProjEl.style.display = (rocVisibility.l1 || rocVisibility.l2) ? '' : 'none';
 
   // Summary box stat rows
   const statL1 = document.getElementById('stat-row-l1');
@@ -168,30 +197,27 @@ function applyRocVisibility() {
 }
 
 function buildSmoothRocPath(points, toX, toY) {
-  if (!points.length) return '';
-  if (points.length === 1) return `M ${toX(points[0].fpr)} ${toY(points[0].tpr)}`;
+  if (!points || !points.length) return '';
+  const pts = points.map(p => ({ x: Number(toX(p.fpr)), y: Number(toY(p.tpr)) }));
+  const cleaned = pts;
+  if (cleaned.length === 1) return `M ${cleaned[0].x.toFixed(2)} ${cleaned[0].y.toFixed(2)}`;
+  if (cleaned.length === 2) return `M ${cleaned[0].x.toFixed(2)} ${cleaned[0].y.toFixed(2)} L ${cleaned[1].x.toFixed(2)} ${cleaned[1].y.toFixed(2)}`;
 
-  let path = `M ${toX(points[0].fpr)} ${toY(points[0].tpr)}`;
-  for (let i = 1; i < points.length - 1; i++) {
-    const current = points[i];
-    const next = points[i + 1];
-    const midX = (toX(current.fpr) + toX(next.fpr)) / 2;
-    const midY = (toY(current.tpr) + toY(next.tpr)) / 2;
-    path += ` Q ${toX(current.fpr)} ${toY(current.tpr)} ${midX} ${midY}`;
-  }
+  // Catmull-Rom to Cubic Bezier: smooth C1 curve passing precisely through all evaluated points ("นับทุกจุด")
+  const alpha = 0.35;
+  let path = `M ${cleaned[0].x.toFixed(2)} ${cleaned[0].y.toFixed(2)}`;
+  for (let i = 0; i < cleaned.length - 1; i++) {
+    const p0 = i > 0 ? cleaned[i - 1] : cleaned[i];
+    const p1 = cleaned[i];
+    const p2 = cleaned[i + 1];
+    const p3 = i + 2 < cleaned.length ? cleaned[i + 2] : p2;
 
-  const last = points[points.length - 1];
-  path += ` L ${toX(last.fpr)} ${toY(last.tpr)}`;
-  return path;
-}
+    const c1x = p1.x + (p2.x - p0.x) * alpha / 3.0;
+    const c1y = p1.y + (p2.y - p0.y) * alpha / 3.0;
+    const c2x = p2.x - (p3.x - p1.x) * alpha / 3.0;
+    const c2y = p2.y - (p3.y - p1.y) * alpha / 3.0;
 
-function buildStepRocPath(points, toX, toY) {
-  if (!points.length) return '';
-  let path = `M ${toX(points[0].fpr).toFixed(3)} ${toY(points[0].tpr).toFixed(3)}`;
-
-  for (let i = 1; i < points.length; i++) {
-    const point = points[i];
-    path += ` H ${toX(point.fpr).toFixed(3)} V ${toY(point.tpr).toFixed(3)}`;
+    path += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
   }
   return path;
 }
@@ -199,11 +225,7 @@ function buildStepRocPath(points, toX, toY) {
 function actualRocPoints(thresholds, fprValues, tprValues) {
   const points = [];
   for (let i = thresholds.length - 1; i >= 0; i--) {
-    const point = {threshold: thresholds[i], fpr: fprValues[i], tpr: tprValues[i]};
-    const previous = points[points.length - 1];
-    if (!previous || previous.fpr !== point.fpr || previous.tpr !== point.tpr) {
-      points.push(point);
-    }
+    points.push({threshold: thresholds[i], fpr: fprValues[i], tpr: tprValues[i]});
   }
   return points;
 }
@@ -227,6 +249,294 @@ function renderRocStepPoints(groupId, points, toX, toY) {
   });
 }
 
+function decodeBase64Bytes(encoded) {
+  const binary = atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function morphologyPass(mask, width, height, operation, kernel) {
+  const result = new Uint8Array(mask.length);
+  const center = Math.floor(kernel.length / 2);
+  const offsets = [];
+  kernel.forEach((row, ky) => row.forEach((active, kx) => {
+    if (active) offsets.push([kx - center, ky - center]);
+  }));
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let value = operation === 'erode' ? 1 : 0;
+      for (const [dx, dy] of offsets) {
+        const px = x + dx;
+        const py = y + dy;
+        const inside = px >= 0 && px < width && py >= 0 && py < height;
+        const neighbor = inside ? mask[py * width + px] : (operation === 'erode' ? 1 : 0);
+        if (operation === 'erode' && !neighbor) { value = 0; break; }
+        if (operation === 'dilate' && neighbor) { value = 1; break; }
+      }
+      result[y * width + x] = value;
+    }
+  }
+  return result;
+}
+
+function paintProcessCanvas(canvasId, mask, rgb, width, height, cutout = false) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  const image = context.createImageData(width, height);
+
+  for (let i = 0; i < mask.length; i++) {
+    const dst = i * 4;
+    if (cutout) {
+      image.data[dst] = mask[i] ? rgb[i * 3] : 0;
+      image.data[dst + 1] = mask[i] ? rgb[i * 3 + 1] : 0;
+      image.data[dst + 2] = mask[i] ? rgb[i * 3 + 2] : 0;
+    } else {
+      const value = mask[i] ? 255 : 0;
+      image.data[dst] = value;
+      image.data[dst + 1] = value;
+      image.data[dst + 2] = value;
+    }
+    image.data[dst + 3] = 255;
+  }
+  context.putImageData(image, 0, 0);
+}
+
+function paintProcessInput() {
+  if (!PROCESS_PREVIEW || !processPreviewRgb) return;
+  const canvas = document.getElementById('process-canvas-input');
+  if (!canvas) return;
+  const {width, height} = PROCESS_PREVIEW;
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  const image = context.createImageData(width, height);
+  for (let i = 0; i < width * height; i++) {
+    image.data[i * 4] = processPreviewRgb[i * 3];
+    image.data[i * 4 + 1] = processPreviewRgb[i * 3 + 1];
+    image.data[i * 4 + 2] = processPreviewRgb[i * 3 + 2];
+    image.data[i * 4 + 3] = 255;
+  }
+  context.putImageData(image, 0, 0);
+}
+
+function renderProcessPreview(threshold) {
+  if (!PROCESS_PREVIEW || !processPreviewScores || !processPreviewRgb) return;
+  const {width, height, kernel} = PROCESS_PREVIEW;
+  const raw = new Uint8Array(processPreviewScores.length);
+  for (let i = 0; i < processPreviewScores.length; i++) {
+    raw[i] = processPreviewScores[i] >= threshold ? 1 : 0;
+  }
+
+  const eroded = morphologyPass(raw, width, height, 'erode', kernel);
+  const opened = morphologyPass(eroded, width, height, 'dilate', kernel);
+  const dilated = morphologyPass(opened, width, height, 'dilate', kernel);
+  const closed = morphologyPass(dilated, width, height, 'erode', kernel);
+
+  paintProcessCanvas('process-canvas-raw', raw, processPreviewRgb, width, height);
+  paintProcessCanvas('process-canvas-open', opened, processPreviewRgb, width, height);
+  paintProcessCanvas('process-canvas-close', closed, processPreviewRgb, width, height);
+  paintProcessCanvas('process-canvas-cutout', closed, processPreviewRgb, width, height, true);
+
+  const count = values => values.reduce((sum, value) => sum + value, 0);
+  const counts = document.getElementById('process-preview-counts');
+  if (counts) {
+    counts.textContent = `Foreground pixels: Raw ${count(raw).toLocaleString()} → Opening ${count(opened).toLocaleString()} → Closing ${count(closed).toLocaleString()}`;
+  }
+}
+
+function initProcessPreview() {
+  if (!PROCESS_PREVIEW) return;
+  processPreviewRgb = decodeBase64Bytes(PROCESS_PREVIEW.rgb_u8_base64);
+  const scoreBytes = decodeBase64Bytes(PROCESS_PREVIEW.score_f32_base64);
+  processPreviewScores = new Float32Array(scoreBytes.buffer);
+  paintProcessInput();
+
+  const sample = document.getElementById('process-preview-sample');
+  if (sample) sample.textContent = `${PROCESS_PREVIEW.sample} · ${PROCESS_PREVIEW.width}×${PROCESS_PREVIEW.height} px`;
+  renderProcessPreview(currentRocThreshold);
+}
+
+function updateRocProcess(value, requestedThreshold = null) {
+  if (!rocRawTrail.length || !rocMorphTrail.length) return;
+  const maxIndex = Math.min(rocRawTrail.length, rocMorphTrail.length) - 1;
+  currentRocProcessIndex = Math.max(0, Math.min(maxIndex, Math.round(Number(value))));
+  const rawPoint = rocRawTrail[currentRocProcessIndex];
+  const morphPoint = rocMorphTrail[currentRocProcessIndex];
+  currentRocThreshold = requestedThreshold === null
+    ? Number(rawPoint.threshold)
+    : Math.max(0, Math.min(1, Number(requestedThreshold)));
+  const toX = fpr => 50 + fpr * 420;
+  const toY = tpr => 360 - tpr * 320;
+  const rawProgress = rocRawTrail.slice(0, currentRocProcessIndex + 1);
+  const morphProgress = rocMorphTrail.slice(0, currentRocProcessIndex + 1);
+
+  // Grow or shrink each visible trail through the points processed so far.
+  document.getElementById('dynamic-guide-l1')?.setAttribute(
+    'd', buildSmoothRocPath(rawProgress, toX, toY)
+  );
+  document.getElementById('dynamic-guide-l2')?.setAttribute(
+    'd', buildSmoothRocPath(morphProgress, toX, toY)
+  );
+  renderRocStepPoints('roc-points-l1', rawProgress, toX, toY);
+  renderRocStepPoints('roc-points-l2', morphProgress, toX, toY);
+
+  // Active Operating Point: prefer morphology if L2 visible, else raw
+  const activePt = (rocVisibility.l2 ? morphPoint : rawPoint) || rawPoint;
+  const ax = toX(activePt.fpr);
+  const ay = toY(activePt.tpr);
+  const rawAx = toX(rawPoint.fpr);
+  const rawAy = toY(rawPoint.tpr);
+  const morphAx = toX(morphPoint.fpr);
+  const morphAy = toY(morphPoint.tpr);
+
+  // Update Textbook-Style Projection Lines (FPRa / TPRa like User Reference Image)
+  const projX = document.getElementById('roc-proj-x');
+  if (projX) {
+    projX.setAttribute('x1', ax.toFixed(2));
+    projX.setAttribute('y1', ay.toFixed(2));
+    projX.setAttribute('x2', ax.toFixed(2));
+    projX.setAttribute('y2', '360');
+  }
+  const projY = document.getElementById('roc-proj-y');
+  if (projY) {
+    projY.setAttribute('x1', ax.toFixed(2));
+    projY.setAttribute('y1', ay.toFixed(2));
+    projY.setAttribute('x2', '50');
+    projY.setAttribute('y2', ay.toFixed(2));
+  }
+  const rawDot = document.getElementById('roc-active-marker-l1');
+  if (rawDot) {
+    rawDot.setAttribute('cx', rawAx.toFixed(2));
+    rawDot.setAttribute('cy', rawAy.toFixed(2));
+  }
+  const morphDot = document.getElementById('roc-active-marker-l2');
+  if (morphDot) {
+    morphDot.setAttribute('cx', morphAx.toFixed(2));
+    morphDot.setAttribute('cy', morphAy.toFixed(2));
+  }
+  const xTag = document.getElementById('roc-proj-x-tag');
+  if (xTag) xTag.setAttribute('transform', `translate(${ax.toFixed(2)}, 360)`);
+  const yTag = document.getElementById('roc-proj-y-tag');
+  if (yTag) yTag.setAttribute('transform', `translate(50, ${ay.toFixed(2)})`);
+  const xVal = document.getElementById('roc-proj-x-val');
+  if (xVal) xVal.textContent = `FPRₐ ${(activePt.fpr * 100).toFixed(2)}%`;
+  const yVal = document.getElementById('roc-proj-y-val');
+  if (yVal) yVal.textContent = `TPRₐ ${(activePt.tpr * 100).toFixed(2)}%`;
+
+  const slider = document.getElementById('roc-process-slider');
+  if (slider) slider.value = currentRocThreshold.toFixed(3);
+  const setText = (id, text) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = text;
+  };
+  setText('roc-process-step', `Step ${currentRocProcessIndex + 1} / ${maxIndex + 1} (นับครบทุกจุด 57 ระดับ)`);
+  const thresholdInput = document.getElementById('roc-process-threshold');
+  if (thresholdInput) thresholdInput.value = currentRocThreshold.toFixed(6);
+  setText('roc-live-raw-fpr', rawPoint.fpr.toFixed(6));
+  setText('roc-live-raw-tpr', rawPoint.tpr.toFixed(6));
+  setText('roc-live-morph-fpr', morphPoint.fpr.toFixed(6));
+  setText('roc-live-morph-tpr', morphPoint.tpr.toFixed(6));
+  renderProcessPreview(currentRocThreshold);
+  applyRocVisibility();
+}
+
+function updateRocProcessThreshold(value) {
+  if (!rocRawTrail.length) return;
+  const threshold = Math.max(0, Math.min(1, Number(value)));
+  let index = rocRawTrail.findIndex(point => point.threshold < threshold) - 1;
+  if (index < 0) index = 0;
+  if (!rocRawTrail.some(point => point.threshold < threshold)) index = rocRawTrail.length - 1;
+  updateRocProcess(index, threshold);
+}
+
+function stepRocProcess(direction) {
+  const nextThreshold = Math.max(
+    0,
+    Math.min(1, currentRocThreshold + Number(direction) * 0.001)
+  );
+  updateRocProcessThreshold(Number(nextThreshold.toFixed(3)));
+}
+
+function clampRocView() {
+  rocView.width = Math.max(62.5, Math.min(ROC_VIEWBOX.width, rocView.width));
+  rocView.height = rocView.width * (ROC_VIEWBOX.height / ROC_VIEWBOX.width);
+  rocView.x = Math.max(0, Math.min(ROC_VIEWBOX.width - rocView.width, rocView.x));
+  rocView.y = Math.max(0, Math.min(ROC_VIEWBOX.height - rocView.height, rocView.y));
+}
+
+function applyRocView() {
+  clampRocView();
+  const svg = document.getElementById('roc-svg');
+  if (svg) {
+    svg.setAttribute('viewBox', [rocView.x, rocView.y, rocView.width, rocView.height]
+      .map(value => value.toFixed(3)).join(' '));
+  }
+  const level = document.getElementById('roc-zoom-level');
+  if (level) level.value = `${Math.round((ROC_VIEWBOX.width / rocView.width) * 100)}%`;
+}
+
+function zoomRocAt(factor, clientX = null, clientY = null) {
+  const svg = document.getElementById('roc-svg');
+  if (!svg) return;
+  const rect = svg.getBoundingClientRect();
+  const px = clientX === null ? 0.5 : Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  const py = clientY === null ? 0.5 : Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+  const anchorX = rocView.x + px * rocView.width;
+  const anchorY = rocView.y + py * rocView.height;
+  const nextWidth = Math.max(62.5, Math.min(ROC_VIEWBOX.width, rocView.width * factor));
+  const nextHeight = nextWidth * (ROC_VIEWBOX.height / ROC_VIEWBOX.width);
+  rocView.x = anchorX - px * nextWidth;
+  rocView.y = anchorY - py * nextHeight;
+  rocView.width = nextWidth;
+  rocView.height = nextHeight;
+  applyRocView();
+}
+
+function zoomRocGraph(factor) {
+  zoomRocAt(Number(factor));
+}
+
+function resetRocZoom() {
+  rocView = {...ROC_VIEWBOX};
+  applyRocView();
+}
+
+function initRocZoom() {
+  const svg = document.getElementById('roc-svg');
+  if (!svg) return;
+  applyRocView();
+  svg.addEventListener('wheel', event => {
+    event.preventDefault();
+    zoomRocAt(event.deltaY < 0 ? 0.82 : 1.22, event.clientX, event.clientY);
+  }, {passive: false});
+  svg.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    rocPan = {clientX: event.clientX, clientY: event.clientY, x: rocView.x, y: rocView.y};
+    svg.setPointerCapture(event.pointerId);
+    svg.classList.add('is-panning');
+  });
+  svg.addEventListener('pointermove', event => {
+    if (!rocPan) return;
+    const rect = svg.getBoundingClientRect();
+    rocView.x = rocPan.x - (event.clientX - rocPan.clientX) * rocView.width / rect.width;
+    rocView.y = rocPan.y - (event.clientY - rocPan.clientY) * rocView.height / rect.height;
+    applyRocView();
+  });
+  const stopPan = event => {
+    if (!rocPan) return;
+    rocPan = null;
+    svg.classList.remove('is-panning');
+    if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+  };
+  svg.addEventListener('pointerup', stopPan);
+  svg.addEventListener('pointercancel', stopPan);
+  svg.addEventListener('dblclick', resetRocZoom);
+}
 function initRocCurves() {
   const toX = fpr => 50 + fpr * 420;
   const toY = tpr => 360 - tpr * 320;
@@ -249,18 +559,17 @@ function initRocCurves() {
       )
     : [...MORPH_OPERATING_POINTS].sort((a, b) => b.threshold - a.threshold);
 
+  rocRawTrail = rawTrail;
+  rocMorphTrail = morphTrail;
+
   const guide1 = document.getElementById('dynamic-guide-l1');
   if (guide1) {
-    guide1.setAttribute('d', hasActualCurves
-      ? buildStepRocPath(rawTrail, toX, toY)
-      : buildSmoothRocPath(rawTrail, toX, toY));
+    guide1.setAttribute('d', buildSmoothRocPath(rawTrail, toX, toY));
   }
 
   const guide2 = document.getElementById('dynamic-guide-l2');
   if (guide2) {
-    guide2.setAttribute('d', hasActualCurves
-      ? buildStepRocPath(morphTrail, toX, toY)
-      : buildSmoothRocPath(morphTrail, toX, toY));
+    guide2.setAttribute('d', buildSmoothRocPath(morphTrail, toX, toY));
   }
 
   if (hasActualCurves) {
@@ -275,6 +584,16 @@ function initRocCurves() {
     resolutionLabel.textContent = `Exact ROC • Raw ${rawTrail.length}/${rawThresholdCount} steps • Morphology ${morphTrail.length}/${morphThresholdCount} steps`;
   }
 
+  if (hasActualCurves) {
+    const slider = document.getElementById('roc-process-slider');
+    if (slider) {
+      slider.min = 0;
+      slider.max = 1;
+      slider.step = 0.001;
+    }
+    updateRocProcessThreshold(0.11);
+  }
+
   applyRocVisibility();
 }
 
@@ -284,6 +603,8 @@ document.addEventListener('DOMContentLoaded', () => {
   selectCell('TN');
   updateGraySlider(128);
   initRocCurves();
+  initRocZoom();
+  initProcessPreview();
   if (SCORE_DISTRIBUTION) {
     document.getElementById('distribution-pixel-count').textContent = (
       SCORE_DISTRIBUTION.background_total + SCORE_DISTRIBUTION.foreground_total
@@ -403,22 +724,10 @@ function interpolateOperatingPoint(threshold, points) {
   return points[points.length - 1];
 }
 
-function buildOperatingTrail(threshold, points, toX, toY) {
-  const current = interpolateOperatingPoint(threshold, points);
-  const descending = [...points].sort((a, b) => b.threshold - a.threshold);
-  const trail = [{fpr: 0, tpr: 0}];
-
-  descending.forEach(point => {
-    if (point.threshold > threshold) trail.push({fpr: point.fpr, tpr: point.tpr});
-  });
-  trail.push({fpr: current.fpr, tpr: current.tpr});
-
-  return buildSmoothRocPath(trail, toX, toY);
-}
 
 // ROC Dual Curve Simulation Slider (Retained as safe no-op stub)
 function updateRocSlider(thresholdVal) {
-  // Slider removed as full curves are permanently rendered
+  updateRocProcessThreshold(thresholdVal);
 }
 
 
